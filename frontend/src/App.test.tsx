@@ -57,6 +57,31 @@ function chainSwitchingProvider(accounts: string[], initialChainId = "0x1", flag
   };
 }
 
+function unknownChainProvider(accounts: string[], flags: Partial<TestProvider> = {}): TestProvider {
+  let added = false;
+  return {
+    ...flags,
+    request: vi.fn(async ({ method, params }: { method: string; params?: unknown[] }) => {
+      if (method === "eth_requestAccounts" || method === "eth_accounts") return accounts;
+      if (method === "eth_getBalance") return "0x2a";
+      if (method === "eth_chainId") return "0x1";
+      if (method === "wallet_addEthereumChain") {
+        added = true;
+        return null;
+      }
+      if (method === "wallet_switchEthereumChain") {
+        if (!added) {
+          const error = new Error("Unrecognized chain") as Error & { code: number };
+          error.code = 4902;
+          throw error;
+        }
+        return params;
+      }
+      return null;
+    }),
+  };
+}
+
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
@@ -273,18 +298,36 @@ test("connect wallet switches the selected provider to Studionet before marking 
   await userEvent.click(await screen.findByRole("button", { name: /OKX Wallet/i }));
 
   await waitFor(() => expect(okx.request).toHaveBeenCalledWith({ method: "eth_chainId" }));
-  expect(okx.request).toHaveBeenCalledWith({
-    method: "wallet_addEthereumChain",
-    params: [
-      expect.objectContaining({
-        chainId: "0xf22f",
-        chainName: "Genlayer Studio Network",
-      }),
-    ],
-  });
   expect(okx.request).toHaveBeenCalledWith({ method: "wallet_switchEthereumChain", params: [{ chainId: "0xf22f" }] });
+  expect(okx.request).not.toHaveBeenCalledWith(expect.objectContaining({ method: "wallet_addEthereumChain" }));
   expect(phantom.request).not.toHaveBeenCalled();
   expect(await screen.findByRole("button", { name: /0x5555...5555/i })).toBeInTheDocument();
+});
+
+test("connect wallet adds Studionet only when the selected provider does not know the chain", async () => {
+  const okx = unknownChainProvider(["0x6666666666666666666666666666666666666666"], { isOkxWallet: true });
+  Object.defineProperty(window, "okxwallet", {
+    configurable: true,
+    value: okx,
+  });
+
+  render(<App />);
+  await userEvent.click(screen.getByRole("button", { name: /Connect Wallet/i }));
+  await userEvent.click(await screen.findByRole("button", { name: /OKX Wallet/i }));
+
+  await waitFor(() =>
+    expect(okx.request).toHaveBeenCalledWith({
+      method: "wallet_addEthereumChain",
+      params: [
+        expect.objectContaining({
+          chainId: "0xf22f",
+          chainName: "Genlayer Studio Network",
+        }),
+      ],
+    }),
+  );
+  expect(okx.request).toHaveBeenCalledWith({ method: "wallet_switchEthereumChain", params: [{ chainId: "0xf22f" }] });
+  expect(await screen.findByRole("button", { name: /0x6666...6666/i })).toBeInTheDocument();
 });
 
 test("wallet session is restored after reload when the selected provider still exposes accounts", async () => {

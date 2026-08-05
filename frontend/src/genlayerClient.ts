@@ -207,6 +207,30 @@ function walletErrorMessage(err: unknown) {
   return err instanceof Error ? err.message : typeof err === "string" ? err : "";
 }
 
+function walletErrorCode(err: unknown) {
+  if (typeof err === "object" && err && "code" in err) {
+    return (err as { code?: unknown }).code;
+  }
+  return undefined;
+}
+
+function isUnknownChainError(err: unknown) {
+  const code = walletErrorCode(err);
+  const message = walletErrorMessage(err).toLowerCase();
+  return (
+    code === 4902 ||
+    code === "4902" ||
+    message.includes("unrecognized chain") ||
+    message.includes("unknown chain") ||
+    message.includes("not added") ||
+    message.includes("has not been added")
+  );
+}
+
+async function switchWalletToStudionet(provider: WalletProvider) {
+  await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: studionetChainId }] });
+}
+
 async function ensureWalletOnStudionet(provider: WalletProvider) {
   try {
     const currentChainId = normalizeChainId(await provider.request({ method: "eth_chainId" }));
@@ -216,9 +240,22 @@ async function ensureWalletOnStudionet(provider: WalletProvider) {
   }
 
   try {
-    await provider.request({ method: "wallet_addEthereumChain", params: [studionetWalletChain] });
-    await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: studionetChainId }] });
+    await switchWalletToStudionet(provider);
   } catch (err) {
+    if (isUnknownChainError(err)) {
+      try {
+        await provider.request({ method: "wallet_addEthereumChain", params: [studionetWalletChain] });
+        await switchWalletToStudionet(provider);
+        return;
+      } catch (addErr) {
+        const detail = walletErrorMessage(addErr);
+        throw new Error(
+          detail
+            ? `Wallet is not connected to GenLayer Studionet. Approve adding and switching the network in your wallet. (${detail})`
+            : "Wallet is not connected to GenLayer Studionet. Approve adding and switching the network in your wallet.",
+        );
+      }
+    }
     const detail = walletErrorMessage(err);
     throw new Error(
       detail
