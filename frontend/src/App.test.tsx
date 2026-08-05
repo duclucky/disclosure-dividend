@@ -1,5 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "./App";
 import { __resetWalletDiscoveryForTests } from "./genlayerClient";
@@ -404,6 +406,15 @@ test("wallet picker closes when the user clicks outside it", async () => {
   await userEvent.click(document.body);
 
   await waitFor(() => expect(screen.queryByRole("dialog", { name: /Choose wallet/i })).not.toBeInTheDocument());
+});
+
+test("wallet popover is rendered as a viewport layer above page content", () => {
+  const css = readFileSync(join(__dirname, "index.css"), "utf8");
+  const walletPopoverRule = css.match(/\.wallet-popover\s*\{(?<body>[^}]+)\}/)?.groups?.body ?? "";
+  const zIndex = Number(walletPopoverRule.match(/z-index:\s*(\d+)/)?.[1] ?? "0");
+
+  expect(walletPopoverRule).toContain("position: fixed");
+  expect(zIndex).toBeGreaterThanOrEqual(1000);
 });
 
 test("connect wallet switches the selected provider to Studionet before marking it connected", async () => {
