@@ -244,7 +244,7 @@ def _source_result(
             advisory_text = advisory_body.lower()
             advisory_id_match = ghsa_id.lower() in advisory_text
             package_name = target_package.lower().split(":", 1)[-1]
-            package_match = package_name in advisory_text and target_package.split(":", 1)[0].lower() in advisory_text
+            package_match = package_name in advisory_text
 
     patch_match = False
     if patch_stage == "COMPLETE":
@@ -807,6 +807,15 @@ class Contract(gl.Contract):
             raise gl.vm.UserError("Only sponsor can cancel")
         if pool.status == "DISTRIBUTED":
             raise gl.vm.UserError("Distributed pool cannot be cancelled")
+        claimants = _split_csv(pool.claimants_csv)
+        for claimant in claimants:
+            key = pool_id + "|" + claimant.lower()
+            if key in self.claims:
+                claim = self.claims[key]
+                account = _addr_key(claim.claimant)
+                current_claimant = self.credits.get(account, bigint(0))
+                self.credits[account] = bigint(int(current_claimant) + int(claim.bond_wei))
+                self.contract_liability = bigint(int(self.contract_liability) + int(claim.bond_wei))
         pool.status = "CANCELLED"
         sponsor_account = _addr_key(pool.sponsor)
         current = self.credits.get(sponsor_account, bigint(0))

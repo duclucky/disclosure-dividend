@@ -182,6 +182,17 @@ async function deploy() {
     console.log(JSON.stringify({ action: "deploy", status: "SKIPPED", contractAddress: evidence.primary.contractAddress }, null, 2));
     return evidence.primary.contractAddress;
   }
+  const supersededRevisions = [...(evidence.supersededRevisions ?? [])];
+  if (evidence.primary?.status === "FINALIZED") {
+    supersededRevisions.push({
+      sourceCommit: evidence.sourceCommit ?? null,
+      contractSha256: evidence.contractSha256 ?? null,
+      primary: evidence.primary,
+      demo: evidence.demo ?? null,
+      status: "SUPERSEDED_BY_SOURCE_CHANGE",
+      supersededAt: new Date().toISOString(),
+    });
+  }
   const { account, client } = signingClient(requirePrivateKey(PRIMARY_KEY_VARIABLES));
   await assertStudionet(client);
   const code = new Uint8Array(readFileSync(CONTRACT_PATH));
@@ -195,7 +206,13 @@ async function deploy() {
   const contractAddress = contractAddressFromReceipt(receipt);
   if (!/^0x[0-9a-fA-F]{40}$/.test(contractAddress ?? "")) throw new Error("Contract address missing from deploy receipt");
   const primary = { contractAddress, ...txRecord(hash, receipt) };
-  mergeEvidence({ wallets: { ...(evidence.wallets ?? {}), sponsorAddress: account.address }, primary, status: "DEPLOYED" });
+  mergeEvidence({
+    wallets: { ...(evidence.wallets ?? {}), sponsorAddress: account.address },
+    primary,
+    supersededRevisions,
+    demo: null,
+    status: "DEPLOYED",
+  });
   console.log(JSON.stringify({ action: "deploy", status: "FINALIZED", contractAddress }, null, 2));
   return contractAddress;
 }

@@ -18,8 +18,13 @@ test("renders the returned explorer layout without fake aggregate stats", () => 
 test("shows missing contract address as integration pending instead of live data", () => {
   render(<App />);
 
-  expect(screen.getByText(/Integration pending/i)).toBeInTheDocument();
-  expect(screen.getByText(/No contract address is configured/i)).toBeInTheDocument();
+  if (import.meta.env.VITE_CONTRACT_ADDRESS) {
+    expect(screen.getByText(/Reading Studionet/i)).toBeInTheDocument();
+    expect(screen.getByText(/Loading canonical pool state/i)).toBeInTheDocument();
+  } else {
+    expect(screen.getByText(/Integration pending/i)).toBeInTheDocument();
+    expect(screen.getByText(/No contract address is configured/i)).toBeInTheDocument();
+  }
   expect(screen.getAllByText(/Design data/i).length).toBeGreaterThan(0);
 });
 
