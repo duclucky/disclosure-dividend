@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Disclosure Dividend - Pool Explorer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary": "#6feee1",
+                      "tertiary-container": "#b9becc",
+                      "secondary-fixed": "#ebdcff",
+                      "background": "#121414",
+                      "on-surface": "#e2e2e2",
+                      "primary-fixed-dim": "#5adace",
+                      "on-secondary-container": "#c6a5ff",
+                      "surface-variant": "#333535",
+                      "on-tertiary": "#2b313c",
+                      "on-primary-container": "#005750",
+                      "error": "#ffb4ab",
+                      "surface-container-lowest": "#0c0f0f",
+                      "surface-dim": "#121414",
+                      "on-surface-variant": "#bbc9c7",
+                      "inverse-surface": "#e2e2e2",
+                      "surface-container-low": "#1a1c1c",
+                      "inverse-on-surface": "#2f3131",
+                      "on-secondary": "#3e1975",
+                      "on-tertiary-fixed": "#161c26",
+                      "outline": "#869491",
+                      "on-secondary-fixed-variant": "#55338d",
+                      "on-primary-fixed": "#00201d",
+                      "on-background": "#e2e2e2",
+                      "outline-variant": "#3c4947",
+                      "surface-container-high": "#282a2b",
+                      "on-tertiary-fixed-variant": "#414753",
+                      "primary-container": "#4fd1c5",
+                      "on-secondary-fixed": "#270058",
+                      "on-primary-fixed-variant": "#00504a",
+                      "error-container": "#93000a",
+                      "surface": "#121414",
+                      "surface-container": "#1e2020",
+                      "secondary-fixed-dim": "#d4bbff",
+                      "surface-bright": "#37393a",
+                      "surface-tint": "#5adace",
+                      "inverse-primary": "#006a63",
+                      "secondary-container": "#55338d",
+                      "surface-container-highest": "#333535",
+                      "tertiary-fixed-dim": "#c1c6d5",
+                      "on-primary": "#003733",
+                      "primary-fixed": "#79f7ea",
+                      "tertiary": "#d4dae9",
+                      "on-error": "#690005",
+                      "secondary": "#d4bbff",
+                      "on-error-container": "#ffdad6",
+                      "tertiary-fixed": "#dde2f1",
+                      "on-tertiary-container": "#474d59"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "24px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "48px",
+                      "unit": "8px",
+                      "container-max": "1280px"
+              },
+              "fontFamily": {
+                      "label-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "display-lg": ["\"Source Serif 4\""],
+                      "body-md": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "headline-lg-mobile": ["\"Source Serif 4\""],
+                      "headline-md": ["\"Source Serif 4\""],
+                      "headline-lg": ["\"Source Serif 4\""]
+              },
+              "fontSize": {
+                      "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                      "body-lg": ["18px", {"lineHeight": "1.6", "letterSpacing": "0.01em", "fontWeight": "400"}],
+                      "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400"}],
+                      "label-sm": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "letterSpacing": "0.03em", "fontWeight": "600"}],
+                      "headline-md": ["24px", {"lineHeight": "1.3", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                      "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "0.03em", "fontWeight": "600"}]
+              }
+            },
+          }
+        }
+    </script>
+<style>
+        .glow-sm { box-shadow: 0 0 15px rgba(79, 209, 197, 0.3); }
+        .glow-lg { box-shadow: 0 0 30px rgba(79, 209, 197, 0.4); }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glass-panel:hover {
+            border: 1px solid rgba(79, 209, 197, 0.2);
+            box-shadow: 0 0 15px rgba(79, 209, 197, 0.1);
+        }
+        .bg-radial-gradient {
+            background: radial-gradient(circle at 50% 0%, rgba(79, 209, 197, 0.1) 0%, rgba(18, 20, 20, 1) 50%);
+        }
+        .text-glow {
+            text-shadow: 0 0 20px rgba(79, 209, 197, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen bg-radial-gradient selection:bg-primary selection:text-on-primary font-body-md">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-white/10 shadow-[0_0_15px_rgba(79,209,197,0.1)]">
+<div class="flex justify-between items-center px-gutter py-4 max-w-container-max mx-auto">
+<div class="font-headline-md text-headline-md font-bold text-primary tracking-wider">Disclosure Dividend</div>
+<div class="hidden md:flex gap-8 font-label-md text-label-md">
+<a class="text-primary border-b-2 border-primary pb-1 active:scale-95 transition-transform hover:glow-sm transition-all duration-300" href="#">Explorer</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors active:scale-95 transition-transform hover:glow-sm transition-all duration-300" href="#">My Claims</a>
+</div>
+<button class="bg-primary text-on-primary font-label-md text-label-md px-6 py-2 rounded-full hover:glow-sm transition-all duration-300 active:scale-95">Connect Wallet</button>
+</div>
+</nav>
+<main class="pt-[100px] px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-24">
+<!-- Header Section -->
+<header class="text-center mt-16 mb-24 relative z-10">
+<h1 class="font-display-lg text-display-lg text-white mb-6 text-glow">Canonical Truth Protocol</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto mb-10">Seal a vulnerability report before disclosure, establishing chronological precedence on-chain. Create bounties or commit findings to active pools to secure early contributor rewards.</p>
+<button class="bg-surface-container-low/30 backdrop-blur-md border border-primary/40 text-primary font-label-md text-label-md px-8 py-4 rounded-full glow-sm hover:glow-lg hover:bg-primary/10 transition-all duration-300">
+<span class="material-symbols-outlined align-middle mr-2" style="font-size: 18px;">add</span>
+                Create Pool
+            </button>
+</header>
+<!-- Main Content Layout (Bento-style Grid) -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Filters & Stats (Left Sidebar) -->
+<div class="md:col-span-3 space-y-6">
+<div class="glass-panel rounded-xl p-6">
+<h3 class="font-label-md text-label-md text-primary mb-4 uppercase tracking-widest">Network Stats</h3>
+<div class="space-y-4">
+<div class="flex justify-between items-center border-b border-white/5 pb-2">
+<span class="font-body-md text-body-md text-on-surface-variant">Active Pools</span>
+<span class="font-label-md text-label-md text-white">1,402</span>
+</div>
+<div class="flex justify-between items-center border-b border-white/5 pb-2">
+<span class="font-body-md text-body-md text-on-surface-variant">Total Value Locked</span>
+<span class="font-label-md text-label-md text-primary">8.4M GEN</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Avg Resolution</span>
+<span class="font-label-md text-label-md text-white">4.2 Days</span>
+</div>
+</div>
+</div>
+<div class="glass-panel rounded-xl p-6">
+<h3 class="font-label-md text-label-md text-primary mb-4 uppercase tracking-widest">Filter Pools</h3>
+<div class="space-y-3">
+<button class="w-full text-left font-body-md text-body-md text-white bg-white/5 px-4 py-2 rounded border border-white/10 hover:border-primary/50 transition-colors">All Statuses</button>
+<button class="w-full text-left font-body-md text-body-md text-on-surface-variant hover:text-white px-4 py-2 transition-colors">COMMIT_OPEN</button>
+<button class="w-full text-left font-body-md text-body-md text-on-surface-variant hover:text-white px-4 py-2 transition-colors">VERIFICATION</button>
+<button class="w-full text-left font-body-md text-body-md text-on-surface-variant hover:text-white px-4 py-2 transition-colors">FINALIZED</button>
+</div>
+</div>
+</div>
+<!-- Pool Cards Grid (Right Main Content) -->
+<div class="md:col-span-9 grid grid-cols-1 lg:grid-cols-2 gap-6">
+<!-- Card 1 -->
+<div class="glass-panel rounded-xl p-6 flex flex-col h-full transition-all duration-300">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="inline-block px-3 py-1 bg-primary/10 border border-primary/20 text-primary font-label-sm text-label-sm rounded-full mb-3">COMMIT_OPEN</span>
+<h2 class="font-headline-md text-headline-md text-white mb-1">node-tmp</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Path Traversal Vulnerability</p>
+</div>
+<div class="text-right">
+<span class="block font-label-md text-label-md text-on-surface-variant mb-1">Reward</span>
+<span class="font-headline-md text-headline-md text-primary font-bold">50,000 GEN</span>
+</div>
+</div>
+<div class="mt-auto pt-6 border-t border-white/5 flex justify-between items-center">
+<div class="flex items-center gap-2 text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined" style="font-size: 16px;">schedule</span>
+                            Ends in 14h 22m
+                        </div>
+<button class="text-primary hover:text-white font-label-md text-label-md transition-colors flex items-center gap-1">
+                            View Details <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="glass-panel rounded-xl p-6 flex flex-col h-full transition-all duration-300">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="inline-block px-3 py-1 bg-secondary-fixed/10 border border-secondary-fixed/20 text-secondary-fixed font-label-sm text-label-sm rounded-full mb-3">VERIFICATION</span>
+<h2 class="font-headline-md text-headline-md text-white mb-1">express-rate-limit</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Bypass via X-Forwarded-For</p>
+</div>
+<div class="text-right">
+<span class="block font-label-md text-label-md text-on-surface-variant mb-1">Reward</span>
+<span class="font-headline-md text-headline-md text-primary font-bold">25,000 GEN</span>
+</div>
+</div>
+<div class="mt-auto pt-6 border-t border-white/5 flex justify-between items-center">
+<div class="flex items-center gap-2 text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined" style="font-size: 16px;">verified</span>
+                            Consensus at 82%
+                        </div>
+<button class="text-primary hover:text-white font-label-md text-label-md transition-colors flex items-center gap-1">
+                            View Details <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="glass-panel rounded-xl p-6 flex flex-col h-full transition-all duration-300">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="inline-block px-3 py-1 bg-surface-variant border border-outline-variant text-on-surface-variant font-label-sm text-label-sm rounded-full mb-3">FINALIZED</span>
+<h2 class="font-headline-md text-headline-md text-white mb-1">core-js</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Prototype Pollution</p>
+</div>
+<div class="text-right">
+<span class="block font-label-md text-label-md text-on-surface-variant mb-1">Disbursed</span>
+<span class="font-headline-md text-headline-md text-outline font-bold">120,000 GEN</span>
+</div>
+</div>
+<div class="mt-auto pt-6 border-t border-white/5 flex justify-between items-center">
+<div class="flex items-center gap-2 text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined" style="font-size: 16px;">check_circle</span>
+                            Resolved on Oct 24
+                        </div>
+<button class="text-on-surface-variant hover:text-white font-label-md text-label-md transition-colors flex items-center gap-1">
+                            View Proof <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="glass-panel rounded-xl p-6 flex flex-col h-full transition-all duration-300">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="inline-block px-3 py-1 bg-primary/10 border border-primary/20 text-primary font-label-sm text-label-sm rounded-full mb-3">COMMIT_OPEN</span>
+<h2 class="font-headline-md text-headline-md text-white mb-1">nginx-ingress</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Config Injection</p>
+</div>
+<div class="text-right">
+<span class="block font-label-md text-label-md text-on-surface-variant mb-1">Reward</span>
+<span class="font-headline-md text-headline-md text-primary font-bold">200,000 GEN</span>
+</div>
+</div>
+<div class="mt-auto pt-6 border-t border-white/5 flex justify-between items-center">
+<div class="flex items-center gap-2 text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined" style="font-size: 16px;">schedule</span>
+                            Ends in 2d 5h
+                        </div>
+<button class="text-primary hover:text-white font-label-md text-label-md transition-colors flex items-center gap-1">
+                            View Details <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full py-12 bg-background border-t border-outline-variant flat no shadows">
+<div class="flex flex-col md:flex-row justify-between items-center px-margin-desktop max-w-container-max mx-auto gap-4 transition-opacity duration-300">
+<div class="font-label-md text-label-md text-on-surface">Disclosure Dividend</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">© 2024 Disclosure Dividend Protocol. All rights reserved.</div>
+<div class="flex gap-6 font-label-sm text-label-sm">
+<a class="text-on-tertiary-fixed-variant hover:text-primary transition-colors" href="#">Whitepaper</a>
+<a class="text-on-tertiary-fixed-variant hover:text-primary transition-colors" href="#">Github</a>
+<a class="text-on-tertiary-fixed-variant hover:text-primary transition-colors" href="#">Terms</a>
+<a class="text-on-tertiary-fixed-variant hover:text-primary transition-colors" href="#">Privacy</a>
+</div>
+</div>
+</footer>
+</body></html>

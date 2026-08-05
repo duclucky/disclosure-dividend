@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pool Workspace - Disclosure Dividend</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary": "#6feee1",
+                      "tertiary-container": "#b9becc",
+                      "secondary-fixed": "#ebdcff",
+                      "background": "#121414",
+                      "on-surface": "#e2e2e2",
+                      "primary-fixed-dim": "#5adace",
+                      "on-secondary-container": "#c6a5ff",
+                      "surface-variant": "#333535",
+                      "on-tertiary": "#2b313c",
+                      "on-primary-container": "#005750",
+                      "error": "#ffb4ab",
+                      "surface-container-lowest": "#0c0f0f",
+                      "surface-dim": "#121414",
+                      "on-surface-variant": "#bbc9c7",
+                      "inverse-surface": "#e2e2e2",
+                      "surface-container-low": "#1a1c1c",
+                      "inverse-on-surface": "#2f3131",
+                      "on-secondary": "#3e1975",
+                      "on-tertiary-fixed": "#161c26",
+                      "outline": "#869491",
+                      "on-secondary-fixed-variant": "#55338d",
+                      "on-primary-fixed": "#00201d",
+                      "on-background": "#e2e2e2",
+                      "outline-variant": "#3c4947",
+                      "surface-container-high": "#282a2b",
+                      "on-tertiary-fixed-variant": "#414753",
+                      "primary-container": "#4fd1c5",
+                      "on-secondary-fixed": "#270058",
+                      "on-primary-fixed-variant": "#00504a",
+                      "error-container": "#93000a",
+                      "surface": "#121414",
+                      "surface-container": "#1e2020",
+                      "secondary-fixed-dim": "#d4bbff",
+                      "surface-bright": "#37393a",
+                      "surface-tint": "#5adace",
+                      "inverse-primary": "#006a63",
+                      "secondary-container": "#55338d",
+                      "surface-container-highest": "#333535",
+                      "tertiary-fixed-dim": "#c1c6d5",
+                      "on-primary": "#003733",
+                      "primary-fixed": "#79f7ea",
+                      "tertiary": "#d4dae9",
+                      "on-error": "#690005",
+                      "secondary": "#d4bbff",
+                      "on-error-container": "#ffdad6",
+                      "tertiary-fixed": "#dde2f1",
+                      "on-tertiary-container": "#474d59"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "24px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "48px",
+                      "unit": "8px",
+                      "container-max": "1280px"
+              },
+              "fontFamily": {
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "\"Source Serif 4\""
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "\"Source Serif 4\""
+                      ],
+                      "headline-md": [
+                              "\"Source Serif 4\""
+                      ],
+                      "headline-lg": [
+                              "\"Source Serif 4\""
+                      ]
+              },
+              "fontSize": {
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "letterSpacing": "0",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.03em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.03em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .glow-sm { box-shadow: 0 0 15px rgba(111, 238, 225, 0.3); }
+        .glow-primary { box-shadow: 0 0 20px rgba(111, 238, 225, 0.4); }
+        .glass-panel {
+            background-color: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .timeline-line {
+            background: linear-gradient(to bottom, rgba(111, 238, 225, 0.8) 0%, rgba(255, 255, 255, 0.1) 100%);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col antialiased selection:bg-primary/30 relative overflow-x-hidden">
+<!-- Atmospheric Background -->
+<div class="fixed inset-0 z-[-1] pointer-events-none" style="background: radial-gradient(circle at 50% 0%, rgba(111, 238, 225, 0.08) 0%, transparent 60%), radial-gradient(circle at 100% 100%, rgba(85, 51, 141, 0.05) 0%, transparent 50%);"></div>
+<!-- TopNavBar -->
+<nav class="bg-background/80 backdrop-blur-xl fixed top-0 w-full z-50 border-b border-white/10 shadow-[0_0_15px_rgba(79,209,197,0.1)] flex justify-between items-center px-gutter py-4 max-w-container-max mx-auto hidden md:flex">
+<div class="font-headline-md text-headline-md font-bold text-primary tracking-wider">
+            Disclosure Dividend
+        </div>
+<div class="flex gap-8">
+<a class="text-on-surface-variant hover:text-primary transition-colors hover:glow-sm transition-all duration-300 font-label-md text-label-md" href="#">Explorer</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors hover:glow-sm transition-all duration-300 font-label-md text-label-md" href="#">My Claims</a>
+</div>
+<button class="bg-primary/10 border border-primary text-primary font-label-md text-label-md px-6 py-2 rounded hover:bg-primary hover:text-background transition-all glow-sm active:scale-95 transition-transform">
+            Connect Wallet
+        </button>
+</nav>
+<!-- SideNavBar (Hidden on Mobile, Visible on Desktop) -->
+<aside class="bg-surface-container-low/30 backdrop-blur-2xl fixed left-0 top-0 h-full w-64 z-40 border-r border-white/5 flex flex-col h-full py-8 hidden md:flex mt-20">
+<div class="px-6 mb-8 flex items-center gap-4">
+<div class="w-10 h-10 rounded bg-surface border border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">account_tree</span>
+</div>
+<div>
+<h2 class="font-label-md text-label-md text-primary">Pool Workspace</h2>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Active Rewards</p>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-2 px-4">
+<a class="bg-primary/10 text-primary border-r-4 border-primary px-4 py-3 rounded-l flex items-center gap-3 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label-md text-label-md">Pool Overview</span>
+</a>
+<a class="text-on-surface-variant hover:bg-white/5 hover:text-on-surface px-4 py-3 rounded flex items-center gap-3 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="font-label-md text-label-md">Claim History</span>
+</a>
+<a class="text-on-surface-variant hover:bg-white/5 hover:text-on-surface px-4 py-3 rounded flex items-center gap-3 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">account_balance</span>
+<span class="font-label-md text-label-md">Governance</span>
+</a>
+<a class="text-on-surface-variant hover:bg-white/5 hover:text-on-surface px-4 py-3 rounded flex items-center gap-3 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">verified_user</span>
+<span class="font-label-md text-label-md">Security Audit</span>
+</a>
+</nav>
+<div class="px-4 mt-auto flex flex-col gap-2 border-t border-white/5 pt-4">
+<a class="text-on-surface-variant hover:bg-white/5 hover:text-on-surface px-4 py-3 rounded flex items-center gap-3 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="text-on-surface-variant hover:bg-white/5 hover:text-on-surface px-4 py-3 rounded flex items-center gap-3 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 pt-24 md:pt-32 px-margin-mobile md:px-margin-desktop pb-32 max-w-[1600px] w-full mx-auto flex flex-col xl:flex-row gap-gutter">
+<!-- Left Column: Context & Timeline -->
+<div class="flex-1 flex flex-col gap-12">
+<!-- Header Section -->
+<header>
+<p class="font-label-sm text-label-sm text-primary tracking-widest uppercase mb-2">Target Repository</p>
+<h1 class="font-display-lg text-display-lg md:text-[56px] text-white leading-tight mb-4" style="text-shadow: 0 4px 20px rgba(111,238,225,0.15);">
+                    core-protocol / <br/> vaults
+                </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
+                    Active vulnerability disclosure workflow. Ensure your report is cryptographically sealed before submission to the verification node.
+                </p>
+</header>
+<!-- Vertical Timeline -->
+<section class="glass-panel rounded-xl p-8 relative">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-8 border-b border-white/5 pb-4">Lifecycle Status</h3>
+<div class="relative pl-8">
+<!-- The continuous line -->
+<div class="absolute left-3 top-2 bottom-6 w-0.5 timeline-line opacity-50"></div>
+<!-- Step 1: Sealed (Active) -->
+<div class="relative mb-10 group">
+<div class="absolute -left-[37px] top-1 w-6 h-6 rounded-full bg-surface border-2 border-primary flex items-center justify-center glow-sm z-10">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+</div>
+<h4 class="font-label-md text-label-md text-primary mb-1">Sealed Reports</h4>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Cryptographic commitment generated. Awaiting verifier engagement.</p>
+</div>
+<!-- Step 2: Verification -->
+<div class="relative mb-10">
+<div class="absolute -left-[37px] top-1 w-6 h-6 rounded-full bg-surface border-2 border-outline-variant flex items-center justify-center z-10">
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Disclosure Verification</h4>
+<p class="font-body-md text-body-md text-outline text-sm">Automated analysis of the provided proof of concept.</p>
+</div>
+<!-- Step 3: Reveals -->
+<div class="relative mb-10">
+<div class="absolute -left-[37px] top-1 w-6 h-6 rounded-full bg-surface border-2 border-outline-variant flex items-center justify-center z-10">
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Reveals</h4>
+<p class="font-body-md text-body-md text-outline text-sm">Full disclosure package decrypted for manual review.</p>
+</div>
+<!-- Step 4: Review -->
+<div class="relative mb-10">
+<div class="absolute -left-[37px] top-1 w-6 h-6 rounded-full bg-surface border-2 border-outline-variant flex items-center justify-center z-10">
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Committee Review</h4>
+<p class="font-body-md text-body-md text-outline text-sm">Severity assessment and reward allocation sizing.</p>
+</div>
+<!-- Step 5: Split -->
+<div class="relative mb-10">
+<div class="absolute -left-[37px] top-1 w-6 h-6 rounded-full bg-surface border-2 border-outline-variant flex items-center justify-center z-10">
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Reward Split</h4>
+<p class="font-body-md text-body-md text-outline text-sm">Funds distributed according to governance parameters.</p>
+</div>
+<!-- Step 6: Withdrawals -->
+<div class="relative">
+<div class="absolute -left-[37px] top-1 w-6 h-6 rounded-full bg-surface border-2 border-outline-variant flex items-center justify-center z-10">
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Withdrawals Enabled</h4>
+<p class="font-body-md text-body-md text-outline text-sm">Researchers can claim their allocated dividends.</p>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Action Panel -->
+<div class="xl:w-[420px] shrink-0">
+<div class="glass-panel rounded-xl p-6 sticky top-32 flex flex-col gap-6">
+<div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-white mb-2">Commit Report</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                        Submit your hashed payload to establish priority on the disclosure timeline.
+                    </p>
+</div>
+<div class="bg-surface/50 border border-white/5 rounded-lg p-4 space-y-4">
+<div>
+<label class="font-label-sm text-label-sm text-tertiary-container block mb-2">Report Hash (SHA-256)</label>
+<div class="flex items-center gap-2 border border-white/10 rounded px-3 py-2 bg-surface-container-lowest focus-within:border-primary/50 transition-colors">
+<span class="material-symbols-outlined text-outline-variant text-sm">lock</span>
+<input class="bg-transparent border-none focus:ring-0 text-on-surface font-mono text-sm w-full" readonly="" type="text" value="0x8f2a...9b1c"/>
+</div>
+</div>
+<div>
+<label class="font-label-sm text-label-sm text-tertiary-container block mb-2">Estimated Gas</label>
+<div class="text-on-surface font-label-md text-label-md">0.0042 ETH</div>
+</div>
+</div>
+<button class="w-full bg-primary text-on-primary-container font-label-md text-label-md py-4 rounded-lg hover:bg-primary-fixed transition-all glow-primary flex justify-center items-center gap-2 active:scale-95">
+<span class="material-symbols-outlined">fingerprint</span>
+                    Seal My Report
+                </button>
+<!-- Discrete Technical Details -->
+<details class="group mt-4 border-t border-white/5 pt-4">
+<summary class="flex items-center justify-between cursor-pointer list-none font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors">
+<span>Technical Details</span>
+<span class="material-symbols-outlined text-sm group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="pt-4 space-y-3 font-body-md text-body-md text-sm text-outline">
+<div class="flex justify-between">
+<span>GHSA ID:</span>
+<span class="font-mono text-tertiary-container">Pending Assignment</span>
+</div>
+<div class="flex justify-between">
+<span>Advisory Contract:</span>
+<a class="text-primary hover:underline font-mono" href="#">0x4a...2f9e</a>
+</div>
+<div class="flex justify-between">
+<span>Network:</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-primary inline-block"></span> Mainnet</span>
+</div>
+</div>
+</details>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-background w-full py-12 border-t border-outline-variant flex flex-col md:flex-row justify-between items-center px-margin-desktop max-w-container-max mx-auto gap-4 mt-auto relative z-10 md:ml-64">
+<div class="font-label-md text-label-md text-on-surface">
+            © 2024 Disclosure Dividend Protocol. All rights reserved.
+        </div>
+<div class="flex gap-6">
+<a class="text-on-tertiary-fixed-variant hover:text-primary transition-colors duration-300 font-label-sm text-label-sm" href="#">Whitepaper</a>
+<a class="text-on-tertiary-fixed-variant hover:text-primary transition-colors duration-300 font-label-sm text-label-sm" href="#">Github</a>
+<a class="text-on-tertiary-fixed-variant hover:text-primary transition-colors duration-300 font-label-sm text-label-sm" href="#">Terms</a>
+<a class="text-on-tertiary-fixed-variant hover:text-primary transition-colors duration-300 font-label-sm text-label-sm" href="#">Privacy</a>
+</div>
+</footer>
+</body></html>

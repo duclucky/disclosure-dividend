@@ -1,14 +1,16 @@
 # Disclosure Dividend
 
-Disclosure Dividend is a planned GenLayer dApp that divides a funded open-source
+Disclosure Dividend is a GenLayer dApp that divides a funded open-source
 security reward among researchers whose sealed pre-disclosure reports made
 material, non-duplicative contributions to a published vulnerability.
 
-Status: **SELECTED — Stage 1 frontend handoff**.
+Status: **BUILDING - Stage 2 implementation**.
 
-The product brief is in [docs/README.md](docs/README.md). Contract source,
-tests, frontend integration, Studionet deployment, browser-wallet evidence, and
-the public repository are intentionally not claimed at this stage.
+The full Stage 2 specification is in [docs/README.md](docs/README.md). The
+returned frontend has been audited and converted into a buildable Vite/React
+baseline. Contract source, direct tests, Studionet deployment, browser-wallet
+evidence, public repository, and production deployment remain pending until
+their phases produce evidence.
 
 ## Why GenLayer
 
@@ -24,4 +26,5 @@ accepted verdict open native-GEN withdrawal credits.
 - Category: Projects
 - Network: GenLayer Studionet
 - Architecture: one Intelligent Contract plus a wallet-enabled Vite/React dApp
-- Current boundary: no frontend or contract implementation is created in Stage 1
+- Current boundary: local frontend baseline exists; contract and network
+  lifecycle are not yet claimed

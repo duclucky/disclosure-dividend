@@ -1,0 +1,25 @@
+{
+  "name": "disclosure-dividend",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "lint:contracts": "powershell -ExecutionPolicy Bypass -File scripts/check.ps1 -Only lint",
+    "test:direct": "powershell -ExecutionPolicy Bypass -File scripts/check.ps1 -Only test",
+    "test:deployment": "powershell -ExecutionPolicy Bypass -File scripts/check.ps1 -Only deployment",
+    "deploy:studionet": "node scripts/deploy_studionet.mjs deploy",
+    "demo:studionet": "node scripts/deploy_studionet.mjs demo",
+    "inspect:studionet": "node scripts/deploy_studionet.mjs inspect",
+    "build:frontend": "npm --prefix frontend run build",
+    "test:frontend": "npm --prefix frontend run test",
+    "check": "powershell -ExecutionPolicy Bypass -File scripts/check.ps1"
+  },
+  "dependencies": {
+    "genlayer-js": "^1.1.8"
+  },
+  "devDependencies": {
+    "genlayer": "^0.39.2"
+  }
+}
