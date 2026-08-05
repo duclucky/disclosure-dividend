@@ -271,7 +271,7 @@ function useWallet() {
 }
 
 function usePools() {
-  const [pools, setPools] = useState<UiPool[]>(designPools);
+  const [pools, setPools] = useState<UiPool[]>(configuredContractAddress ? [] : designPools);
   const [loading, setLoading] = useState(Boolean(configuredContractAddress));
   const [error, setError] = useState("");
   const [live, setLive] = useState(false);
@@ -286,6 +286,7 @@ function usePools() {
       setLive(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not read contract state");
+      setPools([]);
       setLive(false);
     } finally {
       setLoading(false);
@@ -297,6 +298,16 @@ function usePools() {
   }, [refresh]);
 
   return { pools, loading, error, live, refresh };
+}
+
+function parseWeiInput(value: string): bigint | null {
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  try {
+    return BigInt(trimmed);
+  } catch {
+    return null;
+  }
 }
 
 function goto(path: string) {
@@ -477,7 +488,7 @@ function Explorer({ wallet, poolState }: { wallet: ReturnType<typeof useWallet>;
       <Header active="explorer" wallet={wallet} />
       <main className="page explorer">
         <section className="hero">
-          <p className="eyebrow">{poolState.live ? "Studionet pools" : "Design data"}</p>
+          <p className="eyebrow">{configuredContractAddress ? "Studionet pools" : "Design data"}</p>
           <h1>Disclosure Dividend</h1>
           <p>
             Seal a vulnerability report before disclosure, then let GenLayer validators divide a funded reward across material,
@@ -498,6 +509,16 @@ function Explorer({ wallet, poolState }: { wallet: ReturnType<typeof useWallet>;
             <button className="filter" type="button">Reward split finalized</button>
           </aside>
           <div className="pool-grid">
+            {poolState.pools.length === 0 && configuredContractAddress ? (
+              <article className="pool-card glass">
+                <div className="card-row">
+                  <span className="status source_pending">{poolState.loading ? "LOADING" : "EMPTY"}</span>
+                  <span className="metric-label">Studionet</span>
+                </div>
+                <h2>{poolState.loading ? "Loading pool state" : "No pools found"}</h2>
+                <p>{poolState.loading ? "Canonical contract views are still loading." : "Create a pool to start the first reward lifecycle."}</p>
+              </article>
+            ) : null}
             {poolState.pools.map((pool) => (
               <article className="pool-card glass" key={pool.id}>
                 <div className="card-row">
@@ -547,12 +568,17 @@ function PoolWorkspace({
   const [txState, setTxState] = useState("");
   const [busy, setBusy] = useState(false);
   const pool = useMemo(
-    () => poolState.pools.find((item) => item.id === poolId) ?? designPools.find((item) => item.id === poolId) ?? poolState.pools[0] ?? designPools[0],
+    () =>
+      poolState.pools.find((item) => item.id === poolId) ??
+      (configuredContractAddress ? undefined : designPools.find((item) => item.id === poolId) ?? designPools[0]),
     [poolId, poolState.pools],
   );
   const canWrite = Boolean(configuredContractAddress && wallet.account && !busy);
+  const canSeal = Boolean(canWrite && pool?.status === "COMMIT_OPEN");
+  const canReveal = Boolean(canWrite && pool?.status === "REVEAL_OPEN");
 
   async function onSeal() {
+    if (!pool || !canSeal) return;
     setBusy(true);
     setTxState("Submitting sealed report commitment...");
     try {
@@ -567,6 +593,7 @@ function PoolWorkspace({
   }
 
   async function onReveal() {
+    if (!pool || !canReveal) return;
     setBusy(true);
     setTxState("Submitting report reveal...");
     try {
@@ -587,14 +614,16 @@ function PoolWorkspace({
       <main className="page with-sidebar workspace">
         <section className="workspace-head">
           <p className="eyebrow">Target repository</p>
-          <h1>{pool.id}</h1>
+          <h1>{pool?.id ?? poolId}</h1>
           <p>
-            {pool.repository} is funding {pool.reward} for public reports that materially match the later GitHub advisory
-            and patch evidence.
+            {pool
+              ? `${pool.repository} is funding ${pool.reward} for public reports that materially match the later GitHub advisory and patch evidence.`
+              : "Canonical pool state is not available for this route yet."}
           </p>
         </section>
         <IntegrationNotice loading={poolState.loading} error={poolState.error || wallet.error} live={poolState.live} />
-        <div className="workspace-grid">
+        {pool ? (
+          <div className="workspace-grid">
           <section className="glass lifecycle" aria-label="Lifecycle status">
             <h2>Lifecycle Status</h2>
             {[
@@ -615,11 +644,19 @@ function PoolWorkspace({
             ))}
           </section>
           <aside className="glass action-panel" aria-label="Current action">
-            <h2>{pool.status === "REVEAL_OPEN" ? "Reveal My Report" : "Seal My Report"}</h2>
+            <h2>
+              {pool.status === "COMMIT_OPEN"
+                ? "Seal My Report"
+                : pool.status === "REVEAL_OPEN"
+                  ? "Reveal My Report"
+                  : statusLabels[pool.status]}
+            </h2>
             <p>
               {pool.status === "REVEAL_OPEN"
                 ? "Publish your commit-pinned report URL and salt so the contract can match the original commitment."
-                : "Submit a commitment digest before the deadline. Keep the salt locally until the reveal phase opens."}
+                : pool.status === "COMMIT_OPEN"
+                  ? "Submit a commitment digest before the deadline. Keep the salt locally until the reveal phase opens."
+                  : "No user transaction is available for this pool in its current lifecycle state."}
             </p>
             {pool.status === "REVEAL_OPEN" ? (
               <>
@@ -627,22 +664,24 @@ function PoolWorkspace({
                 <input id="reportUrl" value={reportUrl} onChange={(event) => setReportUrl(event.target.value)} placeholder="https://raw.githubusercontent.com/..." />
                 <label htmlFor="salt">Commitment salt</label>
                 <input id="salt" value={salt} onChange={(event) => setSalt(event.target.value)} placeholder="local secret salt" />
-                <button className="primary-cta" type="button" onClick={onReveal} disabled={!canWrite || !reportUrl || !salt}>
+                <button className="primary-cta" type="button" onClick={onReveal} disabled={!canReveal || !reportUrl || !salt}>
                   <Fingerprint size={18} aria-hidden="true" />
                   Reveal Report
                 </button>
               </>
-            ) : (
+            ) : pool.status === "COMMIT_OPEN" ? (
               <>
                 <label htmlFor="commitment">Commitment digest</label>
                 <input id="commitment" value={commitment} onChange={(event) => setCommitment(event.target.value)} placeholder="64-character sha256 digest" />
                 <label htmlFor="bond">Reservation bond</label>
                 <input id="bond" value={`${pool.reservationBondWei} wei`} readOnly />
-                <button className="primary-cta" type="button" onClick={onSeal} disabled={!canWrite || commitment.length !== 64}>
+                <button className="primary-cta" type="button" onClick={onSeal} disabled={!canSeal || commitment.length !== 64}>
                   <Fingerprint size={18} aria-hidden="true" />
                   Seal My Report
                 </button>
               </>
+            ) : (
+              <p className="tx-status" role="status">{statusLabels[pool.status]}</p>
             )}
             {txState ? <p className="tx-status" role="status">{txState}</p> : null}
             <div className="divider" />
@@ -661,6 +700,12 @@ function PoolWorkspace({
             ) : null}
           </aside>
         </div>
+        ) : (
+          <section className="glass action-panel" aria-label="Current action">
+            <h2>{poolState.loading ? "Loading pool" : "Pool not found"}</h2>
+            <p>{poolState.loading ? "Waiting for canonical Studionet state." : "Return to the explorer and select an available pool."}</p>
+          </section>
+        )}
       </main>
       <Footer live={poolState.live} />
     </>
@@ -705,6 +750,17 @@ function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
 
   const liveClaims = accountView?.claims ?? [];
   const hasLiveAccount = Boolean(configuredContractAddress && wallet.account && accountView);
+  const showDesignAccount = !configuredContractAddress;
+  const creditWei = parseWeiInput(accountView?.creditWei ?? "0") ?? 0n;
+  const requestedWithdrawWei = amountWei.trim() ? parseWeiInput(amountWei) : creditWei;
+  const canWithdraw = Boolean(
+    hasLiveAccount &&
+      !busy &&
+      creditWei > 0n &&
+      requestedWithdrawWei !== null &&
+      requestedWithdrawWei > 0n &&
+      requestedWithdrawWei <= creditWei,
+  );
 
   return (
     <>
@@ -719,7 +775,7 @@ function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
           <section aria-label="Active claims">
             <div className="section-title">
               <h2>Active Claims</h2>
-              <span>{hasLiveAccount ? `${liveClaims.length} linked` : "2 pending"}</span>
+              <span>{hasLiveAccount ? `${liveClaims.length} linked` : showDesignAccount ? "2 pending" : "Canonical view"}</span>
             </div>
             {hasLiveAccount ? (
               liveClaims.map((claim) => (
@@ -735,7 +791,7 @@ function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
                   </dl>
                 </article>
               ))
-            ) : (
+            ) : showDesignAccount ? (
               <>
                 <article className="claim-card glass highlighted">
                   <div>
@@ -761,15 +817,22 @@ function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
                   </dl>
                 </article>
               </>
+            ) : (
+              <article className="claim-card glass highlighted">
+                <div>
+                  <h3>{wallet.account ? "No linked claims" : "Connect wallet"}</h3>
+                  <p>{wallet.account ? "This account has no claims in the canonical contract view." : "Connect a browser wallet to read your canonical claim history."}</p>
+                </div>
+              </article>
             )}
           </section>
           <aside className="credit-card glass">
             <h2>Credit Summary</h2>
             <p>Total available balance</p>
-            <strong>{hasLiveAccount ? `${accountView?.creditWei ?? "0"} wei` : "4,475 GEN"}</strong>
+            <strong>{hasLiveAccount ? `${accountView?.creditWei ?? "0"} wei` : showDesignAccount ? "4,475 GEN" : "0 wei"}</strong>
             <dl>
-              <div><dt>Refundable bonds</dt><dd>{hasLiveAccount ? "Included above" : "25 GEN"}</dd></div>
-              <div><dt>Reward credits</dt><dd>{hasLiveAccount ? "Canonical view" : "4,450 GEN"}</dd></div>
+              <div><dt>Refundable bonds</dt><dd>{hasLiveAccount ? "Included above" : showDesignAccount ? "25 GEN" : "Canonical view"}</dd></div>
+              <div><dt>Reward credits</dt><dd>{hasLiveAccount ? "Canonical view" : showDesignAccount ? "4,450 GEN" : "Canonical view"}</dd></div>
               <div><dt>Pending withdrawals</dt><dd>0 GEN</dd></div>
             </dl>
             {hasLiveAccount ? (
@@ -778,7 +841,7 @@ function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
                 <input id="withdrawAmount" value={amountWei} onChange={(event) => setAmountWei(event.target.value)} placeholder={accountView?.creditWei ?? "0"} />
               </>
             ) : null}
-            <button className="primary-cta" type="button" onClick={onWithdraw} disabled={!hasLiveAccount || busy}>
+            <button className="primary-cta" type="button" onClick={onWithdraw} disabled={!canWithdraw}>
               <Wallet size={18} aria-hidden="true" />
               Withdraw Credit
             </button>

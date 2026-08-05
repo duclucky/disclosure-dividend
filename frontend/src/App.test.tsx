@@ -4,12 +4,19 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "./App";
 import { __resetWalletDiscoveryForTests } from "./genlayerClient";
 
+const genlayerMocks = vi.hoisted(() => ({
+  connect: vi.fn().mockResolvedValue(undefined),
+  readContract: vi.fn().mockResolvedValue([]),
+  waitForTransactionReceipt: vi.fn().mockResolvedValue({}),
+  writeContract: vi.fn().mockResolvedValue("0xhash"),
+}));
+
 vi.mock("genlayer-js", () => ({
   createClient: vi.fn(() => ({
-    connect: vi.fn().mockResolvedValue(undefined),
-    readContract: vi.fn().mockResolvedValue([]),
-    waitForTransactionReceipt: vi.fn().mockResolvedValue({}),
-    writeContract: vi.fn().mockResolvedValue("0xhash"),
+    connect: genlayerMocks.connect,
+    readContract: genlayerMocks.readContract,
+    waitForTransactionReceipt: genlayerMocks.waitForTransactionReceipt,
+    writeContract: genlayerMocks.writeContract,
   })),
 }));
 
@@ -82,11 +89,39 @@ function unknownChainProvider(accounts: string[], flags: Partial<TestProvider> =
   };
 }
 
+function contractPool(status: string, poolId = "node-tmp") {
+  return {
+    pool_id: poolId,
+    sponsor: "0x0000000000000000000000000000000000000000",
+    target_repository: "https://github.com/raszi/node-tmp",
+    target_package: "npm:tmp",
+    role_weights_csv: "20,30,40,10",
+    claim_limit: "1",
+    commit_deadline: "2026-08-06T12:00:00Z",
+    reveal_deadline: "2026-08-07T12:00:00Z",
+    reservation_bond_wei: "25",
+    reward_wei: "1000",
+    status,
+    ghsa_id: "GHSA-ph9p-34f9-6g65",
+    advisory_database_commit: "abc",
+    patch_commit: "def",
+    claim_count: "1",
+    revealed_count: status === "COMMIT_OPEN" ? "0" : "1",
+    attempt_count: status === "COMMIT_OPEN" ? "0" : "1",
+    distributed: status === "DISTRIBUTED",
+  };
+}
+
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
+  genlayerMocks.connect.mockResolvedValue(undefined);
+  genlayerMocks.readContract.mockResolvedValue([]);
+  genlayerMocks.waitForTransactionReceipt.mockResolvedValue({});
+  genlayerMocks.writeContract.mockResolvedValue("0xhash");
   __resetWalletDiscoveryForTests();
   eipRequestController = new AbortController();
+  window.location.hash = "";
   Reflect.deleteProperty(window, "ethereum");
 });
 
@@ -119,20 +154,67 @@ test("shows missing contract address as integration pending instead of live data
   } else {
     expect(screen.getByText(/Integration pending/i)).toBeInTheDocument();
     expect(screen.getByText(/No contract address is configured/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Design data/i).length).toBeGreaterThan(0);
   }
-  expect(screen.getAllByText(/Design data/i).length).toBeGreaterThan(0);
+});
+
+test("configured contract loading does not show design pool cards as live content", () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+  genlayerMocks.readContract.mockImplementation(() => new Promise(() => undefined));
+
+  render(<App />);
+
+  expect(screen.getByText(/Reading Studionet/i)).toBeInTheDocument();
+  expect(screen.queryByText(/Path traversal vulnerability/i)).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: /View Details for node-tmp/i })).not.toBeInTheDocument();
 });
 
 test("pool workspace exposes one legal primary action and hides system controls", async () => {
+  if (import.meta.env.VITE_CONTRACT_ADDRESS) {
+    genlayerMocks.readContract.mockImplementation(async ({ functionName, args }) => {
+      if (functionName === "get_pool_ids") return ["node-tmp"];
+      if (functionName === "get_pool" && args?.[0] === "node-tmp") return contractPool("COMMIT_OPEN");
+      return [];
+    });
+    window.location.hash = "#/pools/node-tmp";
+  }
   render(<App />);
-  await userEvent.click(screen.getByRole("link", { name: /View Details for node-tmp/i }));
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) {
+    await userEvent.click(screen.getByRole("link", { name: /View Details for node-tmp/i }));
+  }
 
-  expect(screen.getByRole("heading", { name: /node-tmp/i })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: /node-tmp/i })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Seal My Report/i })).toBeDisabled();
   expect(screen.queryByText(/Estimated Gas/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/Governance/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/Security Audit/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/Committee Review/i)).not.toBeInTheDocument();
+});
+
+test("distributed live pool does not expose a seal transaction action", async () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+  genlayerMocks.readContract.mockImplementation(async ({ functionName, args }) => {
+    if (functionName === "get_pool_ids") return ["distributed-pool"];
+    if (functionName === "get_pool" && args?.[0] === "distributed-pool") {
+      return contractPool("DISTRIBUTED", "distributed-pool");
+    }
+    return [];
+  });
+  const metamask = provider(["0x7777777777777777777777777777777777777777"], "0x70", { isMetaMask: true });
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: { providers: [metamask], request: vi.fn() },
+  });
+  localStorage.setItem("disclosureDividend.walletId", "metamask");
+  localStorage.setItem("disclosureDividend.walletAccount", "0x7777777777777777777777777777777777777777");
+
+  window.location.hash = "#/pools/distributed-pool";
+  render(<App />);
+
+  expect(await screen.findByRole("heading", { name: /distributed-pool/i })).toBeInTheDocument();
+  expect(screen.queryByPlaceholderText(/64-character sha256 digest/i)).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /^Seal My Report$/i })).not.toBeInTheDocument();
+  expect(screen.getAllByText(/Reward split finalized/i).length).toBeGreaterThan(0);
 });
 
 test("account screen uses GEN credits and user-owned actions", async () => {
@@ -144,6 +226,28 @@ test("account screen uses GEN credits and user-owned actions", async () => {
   expect(screen.queryByText(/DDP/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/USD/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/Manage Evidence/i)).not.toBeInTheDocument();
+});
+
+test("account with zero canonical credit cannot submit a withdrawal", async () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+  genlayerMocks.readContract.mockImplementation(async ({ functionName }) => {
+    if (functionName === "get_credit") return "0";
+    if (functionName === "get_account_pool_ids") return [];
+    return [];
+  });
+  const metamask = provider(["0x8888888888888888888888888888888888888888"], "0x80", { isMetaMask: true });
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: { providers: [metamask], request: vi.fn() },
+  });
+  localStorage.setItem("disclosureDividend.walletId", "metamask");
+  localStorage.setItem("disclosureDividend.walletAccount", "0x8888888888888888888888888888888888888888");
+
+  window.location.hash = "#/account";
+  render(<App />);
+
+  expect(await screen.findByText(/0 wei/i)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Withdraw Credit/i })).toBeDisabled();
 });
 
 test("create pool keeps policy editor layout with real v1 fields", async () => {
@@ -162,10 +266,20 @@ test("create pool keeps policy editor layout with real v1 fields", async () => {
 });
 
 test("finalized split keeps technical details contextual", async () => {
+  if (import.meta.env.VITE_CONTRACT_ADDRESS) {
+    genlayerMocks.readContract.mockImplementation(async ({ functionName, args }) => {
+      if (functionName === "get_pool_ids") return ["node-tmp"];
+      if (functionName === "get_pool" && args?.[0] === "node-tmp") return contractPool("DISTRIBUTED");
+      return [];
+    });
+    window.location.hash = "#/pools/node-tmp";
+  }
   render(<App />);
-  await userEvent.click(screen.getByRole("link", { name: /View Details for node-tmp/i }));
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) {
+    await userEvent.click(screen.getByRole("link", { name: /View Details for node-tmp/i }));
+  }
 
-  const disclosure = screen.getByRole("button", { name: /Technical Details/i });
+  const disclosure = await screen.findByRole("button", { name: /Technical Details/i });
   expect(disclosure).toBeInTheDocument();
   expect(screen.queryByText(/validator identities/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/attempt id/i)).not.toBeInTheDocument();
