@@ -32,7 +32,7 @@ Character count: 914
 
 - Repository: https://github.com/duclucky/disclosure-dividend
 - Live frontend: https://disclosure-dividend.vercel.app
-- Successful CI for verified frontend/submission-base commit: https://github.com/duclucky/disclosure-dividend/actions/runs/31012926269
+- Successful CI for submission packet commit `8d94a627ff576bacb3b4e8d9e7368567ed26e03d`: https://github.com/duclucky/disclosure-dividend/actions/runs/31014180121
 - Primary contract address: `0x484f2a86CAFa7E43894d78F846ad132df8Dc6F5A`
 - Primary contract deploy transaction: https://explorer-studio.genlayer.com/tx/0x248225cd3616bd352acdacf0018cb09c7faf7240f82edb3d7b1699bc1d03fe7d
 - Primary contract address explorer: https://explorer-studio.genlayer.com/address/0x484f2a86CAFa7E43894d78F846ad132df8Dc6F5A
@@ -47,9 +47,10 @@ Character count: 914
 - Network: GenLayer Studionet
 - Deployed contract source commit recorded in evidence: `94a4597cf37d5c8dbb002b52fd7fbcd54afed45a`
 - Verified frontend/submission-base commit: `17b390199d86363cac709f5e8589a849c936e13e`
+- Verified submission packet commit: `8d94a627ff576bacb3b4e8d9e7368567ed26e03d`
 - Local verification command: `npm run check`
 - Local verification result: GenVM lint/schema check passed; 13 direct/static contract tests passed; 3 deployment parser tests passed; frontend TypeScript passed; 30 frontend Vitest tests passed; production frontend build completed.
-- CI verification: GitHub Actions run `31012926269` completed successfully for the verified frontend/submission-base commit `17b390199d86363cac709f5e8589a849c936e13e`.
+- CI verification: GitHub Actions run `31014180121` completed successfully for submission packet commit `8d94a627ff576bacb3b4e8d9e7368567ed26e03d`.
 - Production frontend verification: `https://disclosure-dividend.vercel.app/` returned HTTP 200 and the deployed bundle contains the app landing/explorer copy.
 
 ## Studionet lifecycle evidence summary

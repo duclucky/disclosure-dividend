@@ -12,9 +12,10 @@ Status: **Studionet lifecycle complete; Vercel frontend deployed**.
 - Contract Address Explorer: `https://explorer-studio.genlayer.com/address/0x484f2a86CAFa7E43894d78F846ad132df8Dc6F5A`
 - Contract deployment source commit: `94a4597cf37d5c8dbb002b52fd7fbcd54afed45a`
 - Verified frontend/submission-base commit: `17b390199d86363cac709f5e8589a849c936e13e`
+- Verified submission packet commit: `8d94a627ff576bacb3b4e8d9e7368567ed26e03d`
 - Lifecycle evidence: `docs/evidence/studionet/deployment.json`
 - Submission packet: `docs/SUBMISSION.md`
-- CI: `https://github.com/duclucky/disclosure-dividend/actions/runs/31012926269`
+- Successful CI for submission packet commit: `https://github.com/duclucky/disclosure-dividend/actions/runs/31014180121`
 - Frontend production URL: `https://disclosure-dividend.vercel.app`
 - Final demo state: `FINALIZED_LIFECYCLE`
 - Final pool: `node-tmp-msfnpd9s`, status `DISTRIBUTED`

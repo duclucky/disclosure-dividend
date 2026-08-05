@@ -397,7 +397,7 @@ The contract may store short human-readable reason text for a final attempt, but
 - Canonical reads: pool, claims, attempt, credit, contract summary after each finalized step.
 - Balance/receipt proof: safe allowlisted tx hashes, statuses, finality, public addresses, and before/after balances for withdrawal.
 - Evidence path: `docs/evidence/studionet/deployment.json`.
-- CI evidence: `https://github.com/duclucky/disclosure-dividend/actions/runs/31012926269`.
+- CI evidence for submission packet commit `8d94a627ff576bacb3b4e8d9e7368567ed26e03d`: `https://github.com/duclucky/disclosure-dividend/actions/runs/31014180121`.
 - Frontend Vercel URL: `https://disclosure-dividend.vercel.app`.
 - Resume/idempotency: one active `deployment.json`; superseded revisions archived with reason and recovery evidence. The earliest diagnostic revision predates bond-refund recovery, so only sponsor reward recovery is claimed for that revision.
 
