@@ -49,6 +49,15 @@ type UiPool = {
   claims: number;
 };
 
+type PoolFilter = "ALL" | "COMMIT_OPEN" | "SOURCE_PENDING" | "DISTRIBUTED";
+
+const poolFilters: Array<{ label: string; value: PoolFilter }> = [
+  { label: "All statuses", value: "ALL" },
+  { label: "Reports are being sealed", value: "COMMIT_OPEN" },
+  { label: "Waiting for disclosure", value: "SOURCE_PENDING" },
+  { label: "Reward split finalized", value: "DISTRIBUTED" },
+];
+
 const designPools: UiPool[] = [
   {
     id: "node-tmp",
@@ -125,6 +134,23 @@ function formatWeiAsGen(value: string | bigint | undefined) {
   }
 }
 
+function formatWeiAsCompactGen(value: string | bigint | undefined) {
+  try {
+    const wei = typeof value === "bigint" ? value : BigInt(value || "0");
+    if (wei === 0n) return "0 GEN";
+    if (wei < genWeiFactor / 10_000n) return "<0.0001 GEN";
+
+    const whole = wei / genWeiFactor;
+    const fraction = wei % genWeiFactor;
+    if (fraction === 0n) return `${whole.toString()} GEN`;
+
+    const fractionText = fraction.toString().padStart(18, "0").slice(0, 4).replace(/0+$/, "");
+    return fractionText ? `${whole.toString()}.${fractionText} GEN` : `${whole.toString()} GEN`;
+  } catch {
+    return "0 GEN";
+  }
+}
+
 function parseGenInputToWei(value: string): bigint | null {
   const trimmed = value.trim();
   const match = /^(\d+)(?:\.(\d{1,18}))?$/.exec(trimmed);
@@ -145,7 +171,7 @@ function poolFromContract(pool: PoolView): UiPool {
     packageName: pool.target_package,
     issue: pool.ghsa_id ? `${pool.ghsa_id} disclosure` : "Disclosure source pending",
     status: pool.status,
-    reward: formatWeiAsGen(pool.reward_wei),
+    reward: formatWeiAsCompactGen(pool.reward_wei),
     rewardWei: pool.reward_wei,
     reservationBondWei: pool.reservation_bond_wei,
     deadline: pool.status === "COMMIT_OPEN" ? `Commit closes ${pool.commit_deadline}` : statusLabels[pool.status],
@@ -511,12 +537,16 @@ function IntegrationNotice({ loading, error, live }: { loading: boolean; error: 
 }
 
 function Explorer({ wallet, poolState }: { wallet: ReturnType<typeof useWallet>; poolState: ReturnType<typeof usePools> }) {
+  const [statusFilter, setStatusFilter] = useState<PoolFilter>("ALL");
+  const visiblePools = statusFilter === "ALL" ? poolState.pools : poolState.pools.filter((pool) => pool.status === statusFilter);
+  const showEmptyState = visiblePools.length === 0 && (configuredContractAddress || poolState.pools.length > 0);
+
   return (
     <>
       <Header active="explorer" wallet={wallet} />
       <main className="page explorer">
         <section className="hero">
-          <p className="eyebrow">{configuredContractAddress ? "Studionet pools" : "Design data"}</p>
+          <p className="eyebrow">{configuredContractAddress ? "Live reward pools" : "Example reward pools"}</p>
           <h1>Disclosure Dividend</h1>
           <p>
             Seal a vulnerability report before disclosure, then let GenLayer validators divide a funded reward across material,
@@ -531,23 +561,36 @@ function Explorer({ wallet, poolState }: { wallet: ReturnType<typeof useWallet>;
         <section className="content-grid" aria-label="Pool explorer">
           <aside className="filter-card glass">
             <h2>Filter Pools</h2>
-            <button className="filter active" type="button">All statuses</button>
-            <button className="filter" type="button">Reports are being sealed</button>
-            <button className="filter" type="button">Waiting for disclosure</button>
-            <button className="filter" type="button">Reward split finalized</button>
+            {poolFilters.map((filter) => (
+              <button
+                aria-pressed={statusFilter === filter.value}
+                className={statusFilter === filter.value ? "filter active" : "filter"}
+                key={filter.value}
+                type="button"
+                onClick={() => setStatusFilter(filter.value)}
+              >
+                {filter.label}
+              </button>
+            ))}
           </aside>
           <div className="pool-grid">
-            {poolState.pools.length === 0 && configuredContractAddress ? (
+            {showEmptyState ? (
               <article className="pool-card glass">
                 <div className="card-row">
                   <span className="status source_pending">{poolState.loading ? "LOADING" : "EMPTY"}</span>
-                  <span className="metric-label">Studionet</span>
+                  <span className="metric-label">{configuredContractAddress ? "Studionet" : "Filter"}</span>
                 </div>
-                <h2>{poolState.loading ? "Loading pool state" : "No pools found"}</h2>
-                <p>{poolState.loading ? "Canonical contract views are still loading." : "Create a pool to start the first reward lifecycle."}</p>
+                <h2>{poolState.loading ? "Loading pool state" : "No pools shown"}</h2>
+                <p>
+                  {poolState.loading
+                    ? "Canonical contract views are still loading."
+                    : statusFilter === "ALL"
+                      ? "Create a pool to start the first reward lifecycle."
+                      : "No pools match this status yet."}
+                </p>
               </article>
             ) : null}
-            {poolState.pools.map((pool) => (
+            {visiblePools.map((pool) => (
               <article className="pool-card glass" key={pool.id}>
                 <div className="card-row">
                   <span className={`status ${pool.status.toLowerCase()}`}>{pool.status}</span>

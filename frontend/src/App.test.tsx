@@ -191,6 +191,70 @@ test("configured contract retries a transient pool read failure before showing l
   expect(poolIdsAttempts).toBe(2);
 });
 
+test("explorer status filters update the visible pool cards", async () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+  genlayerMocks.readContract.mockImplementation(async ({ functionName, args }) => {
+    if (functionName === "get_pool_ids") return ["commit-pool", "source-pool", "distributed-pool"];
+    if (functionName === "get_pool" && args?.[0] === "commit-pool") return contractPool("COMMIT_OPEN", "commit-pool");
+    if (functionName === "get_pool" && args?.[0] === "source-pool") return contractPool("SOURCE_PENDING", "source-pool");
+    if (functionName === "get_pool" && args?.[0] === "distributed-pool") return contractPool("DISTRIBUTED", "distributed-pool");
+    return [];
+  });
+
+  render(<App />);
+
+  expect(await screen.findByRole("link", { name: /View Details for commit-pool/i })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /View Details for source-pool/i })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /View Details for distributed-pool/i })).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: /Reports are being sealed/i }));
+  expect(screen.getByRole("link", { name: /View Details for commit-pool/i })).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: /View Details for source-pool/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: /View Details for distributed-pool/i })).not.toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: /Waiting for disclosure/i }));
+  expect(screen.queryByRole("link", { name: /View Details for commit-pool/i })).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /View Details for source-pool/i })).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: /View Details for distributed-pool/i })).not.toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: /Reward split finalized/i }));
+  expect(screen.queryByRole("link", { name: /View Details for commit-pool/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: /View Details for source-pool/i })).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /View Details for distributed-pool/i })).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: /All statuses/i }));
+  expect(screen.getByRole("link", { name: /View Details for commit-pool/i })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /View Details for source-pool/i })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /View Details for distributed-pool/i })).toBeInTheDocument();
+});
+
+test("explorer pool cards use compact GEN rewards", async () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+  genlayerMocks.readContract.mockImplementation(async ({ functionName, args }) => {
+    if (functionName === "get_pool_ids") return ["tiny-pool"];
+    if (functionName === "get_pool" && args?.[0] === "tiny-pool") return contractPool("COMMIT_OPEN", "tiny-pool");
+    return [];
+  });
+
+  render(<App />);
+
+  expect(await screen.findByText("<0.0001 GEN")).toBeInTheDocument();
+  expect(screen.queryByText(/0\.000000000000001 GEN/)).not.toBeInTheDocument();
+});
+
+test("explorer hero uses product language instead of internal network jargon", async () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+  genlayerMocks.readContract.mockImplementation(async ({ functionName }) => {
+    if (functionName === "get_pool_ids") return [];
+    return [];
+  });
+
+  render(<App />);
+
+  expect(await screen.findByText(/Live reward pools/i)).toBeInTheDocument();
+  expect(screen.queryByText(/Studionet pools/i)).not.toBeInTheDocument();
+});
+
 test("pool workspace exposes one legal primary action and hides system controls", async () => {
   if (import.meta.env.VITE_CONTRACT_ADDRESS) {
     genlayerMocks.readContract.mockImplementation(async ({ functionName, args }) => {
@@ -540,7 +604,7 @@ test("token amounts display GenLayer native token units instead of wei", async (
 
   render(<App />);
 
-  expect((await screen.findAllByText(/0\.000000000000001 GEN/)).length).toBeGreaterThan(0);
+  expect((await screen.findAllByText(/<0\.0001 GEN/)).length).toBeGreaterThan(0);
   expect(screen.getByDisplayValue("0.000000000000000025 GEN")).toBeInTheDocument();
   expect(screen.queryByText(/1000 wei/i)).not.toBeInTheDocument();
 });
