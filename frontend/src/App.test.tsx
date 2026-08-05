@@ -306,6 +306,8 @@ test("create pool keeps policy editor layout with real v1 fields", async () => {
   expect(screen.getByLabelText(/Commit deadline/i)).toBeInTheDocument();
   expect(screen.getByLabelText(/Reveal deadline/i)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Create and Fund Pool/i })).toBeInTheDocument();
+  expect(screen.getByText("2 GEN")).toBeInTheDocument();
+  expect(screen.getByText("1 GEN")).toBeInTheDocument();
   expect(screen.queryByText(/APY/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/multi-sig/i)).not.toBeInTheDocument();
 });
@@ -332,6 +334,7 @@ test("create pool amount is entered as GEN and submitted to the contract as wei"
     expect(genlayerMocks.writeContract).toHaveBeenCalledWith(
       expect.objectContaining({
         functionName: "create_pool",
+        args: expect.arrayContaining([1000000000000000000n]),
         value: 1000n,
       }),
     ),

@@ -891,9 +891,9 @@ function CreatePool({ wallet, onCreated }: { wallet: ReturnType<typeof useWallet
     poolId: "node-tmp",
     targetRepository: "https://github.com/raszi/node-tmp",
     targetPackage: "npm:tmp",
-    rewardGen: "1",
+    rewardGen: "2",
     claimLimit: "6",
-    reservationBondGen: "0.000000000000000025",
+    reservationBondGen: "1",
     commitDeadline: "2026-08-06T12:00",
     revealDeadline: "2026-08-09T12:00",
   });
