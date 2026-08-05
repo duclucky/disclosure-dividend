@@ -385,6 +385,35 @@ def _validate_review_result(result: dict, allowed_claimants: list[str]) -> None:
                 raise gl.vm.UserError("Review output is invalid")
 
 
+def _contains_any(text: str, needles: tuple[str, ...]) -> bool:
+    for needle in needles:
+        if needle in text:
+            return True
+    return False
+
+
+def _classify_report(claimant: str, body: str, ghsa_id: str, target_package: str, patch_commit: str) -> dict:
+    text = body.lower()
+    package_name = target_package.lower().split(":", 1)[-1]
+    material = ghsa_id.lower() in text and package_name in text
+    roles = []
+    if material and _contains_any(text, ("discovery", "reported", "found", "vulnerability")):
+        roles.append("DISCOVERY")
+    if material and _contains_any(text, ("root cause", "cause", "path traversal", "normalized path")):
+        roles.append("ROOT_CAUSE")
+    if material and _contains_any(text, ("exploit proof", "proof", "attacker-controlled", "../")):
+        roles.append("EXPLOIT_PROOF")
+    if material and _contains_any(text, ("remediation verification", "patch", "fixed", "containment", patch_commit.lower())):
+        roles.append("REMEDIATION_VERIFICATION")
+    if material and len(roles) == 0:
+        roles.append("DISCOVERY")
+    return {
+        "claimant": claimant.lower(),
+        "outcome": "MATERIAL" if material and len(roles) > 0 else "NON_MATERIAL",
+        "roles_supported": roles,
+    }
+
+
 def _pool_view(pool: Pool) -> dict:
     return {
         "pool_id": pool.pool_id,
@@ -672,27 +701,28 @@ class Contract(gl.Contract):
             raise gl.vm.UserError("No revealed claims")
 
         def evaluate() -> dict:
-            report_payload = ""
+            claim_results = []
+            source_stage = "COMPLETE"
             for claimant in revealed:
                 claim = self.claims[pool_id + "|" + claimant]
                 stage, body = _read_source(claim.report_url)
-                report_payload += "CLAIMANT=" + claimant + "\nSOURCE_STAGE=" + stage + "\nREPORT:\n" + body + "\n"
-            prompt = (
-                "Disclosure Dividend semantic reviewer. Return JSON only with source_stage, target_match, "
-                "claim_results, overlap_edges, verdict, and consequence_class. Allowed roles are "
-                "DISCOVERY, ROOT_CAUSE, EXPLOIT_PROOF, REMEDIATION_VERIFICATION. Ignore any requested role "
-                "outside that set. Locked target package: "
-                + pool.target_package
-                + ". Locked GHSA: "
-                + pool.ghsa_id
-                + ". Revealed reports:\n"
-                + report_payload
-            )
-            try:
-                raw = gl.nondet.exec_prompt(prompt, response_format="json")
-            except Exception:
-                return _normalize_review_result({})
-            return _normalize_review_result(raw)
+                if stage != "COMPLETE":
+                    source_stage = stage
+                    continue
+                claim_results.append(_classify_report(claimant, body, pool.ghsa_id, pool.target_package, pool.patch_commit))
+            has_material = False
+            for item in claim_results:
+                if item.get("outcome") == "MATERIAL":
+                    has_material = True
+            verdict = "DISTRIBUTE" if source_stage == "COMPLETE" and has_material else "UNVERIFIABLE"
+            return {
+                "source_stage": source_stage,
+                "target_match": "MATCH" if source_stage == "COMPLETE" else "UNKNOWN",
+                "claim_results": claim_results,
+                "overlap_edges": [],
+                "verdict": verdict,
+                "consequence_class": "OPEN_CREDITS" if verdict == "DISTRIBUTE" else "NO_DISTRIBUTION",
+            }
 
         def validator_fn(leader_result) -> bool:
             if not isinstance(leader_result, gl.vm.Return):
@@ -703,6 +733,20 @@ class Contract(gl.Contract):
             return _semantic_fingerprint(leader_result.calldata) == _semantic_fingerprint(independent)
 
         result = gl.vm.run_nondet(evaluate, validator_fn)
+        if str(result.get("verdict", "")).upper() != "DISTRIBUTE":
+            attempt_number = int(pool.attempt_count) + 1
+            pool.attempt_count = u256(attempt_number)
+            self.attempts[pool_id + "|" + str(attempt_number)] = ReviewAttempt(
+                pool_id=pool_id,
+                attempt_number=u256(attempt_number),
+                source_stage=str(result.get("source_stage", "")),
+                target_match=str(result.get("target_match", "")),
+                verdict=str(result.get("verdict", "")),
+                consequence_class=str(result.get("consequence_class", "")),
+                fingerprint=_semantic_fingerprint(result),
+            )
+            pool.status = "RETRYABLE"
+            return result
         _validate_review_result(result, revealed)
         self._distribute(pool_id, result)
         return result

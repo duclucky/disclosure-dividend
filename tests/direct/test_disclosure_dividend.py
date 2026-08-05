@@ -125,7 +125,22 @@ def test_distribution_opens_researcher_and_sponsor_credits(direct_vm, direct_dep
     contract.reveal_claim("node-tmp", report_b, "salt-b")
     direct_vm.warp(AFTER_REVEAL)
     contract.close_reveal_window("node-tmp")
-    mock_review(direct_vm, review_result(direct_bob, direct_charlie))
+    direct_vm.mock_web(
+        r".*raw\.githubusercontent\.com/acme/reports/abc/node-tmp\.md",
+        {
+            "method": "GET",
+            "status": 200,
+            "body": "GHSA-ph9p-34f9-6g65 npm:tmp discovery root cause path traversal exploit proof",
+        },
+    )
+    direct_vm.mock_web(
+        r".*raw\.githubusercontent\.com/acme/reports/def/node-tmp-fix\.md",
+        {
+            "method": "GET",
+            "status": 200,
+            "body": "GHSA-ph9p-34f9-6g65 npm:tmp remediation verification patch containment",
+        },
+    )
     contract.adjudicate_pool("node-tmp")
 
     assert contract.get_pool("node-tmp")["status"] == "DISTRIBUTED"
@@ -157,7 +172,7 @@ def test_withdraw_credit_debits_and_blocks_double_withdraw(direct_vm, direct_dep
         contract.withdraw_credit(1)
 
 
-def test_invalid_review_output_cannot_expand_roles(direct_vm, direct_deploy, direct_alice, direct_bob):
+def test_report_text_cannot_expand_roles_outside_locked_enum(direct_vm, direct_deploy, direct_alice, direct_bob):
     contract = direct_deploy(CONTRACT_PATH)
     create_pool(contract, direct_vm, direct_alice)
     report_url = "https://raw.githubusercontent.com/acme/reports/abc/node-tmp.md"
@@ -170,9 +185,45 @@ def test_invalid_review_output_cannot_expand_roles(direct_vm, direct_deploy, dir
     contract.reveal_claim("node-tmp", report_url, "salt-a")
     direct_vm.warp(AFTER_REVEAL)
     contract.close_reveal_window("node-tmp")
-    bad = review_result(direct_bob)
-    bad["claim_results"][0]["roles_supported"] = ["DISCOVERY", "MAKE_ME_RICH"]
-    mock_review(direct_vm, bad)
+    direct_vm.mock_web(
+        r".*raw\.githubusercontent\.com/acme/reports/abc/node-tmp\.md",
+        {
+            "method": "GET",
+            "status": 200,
+            "body": (
+                "GHSA-ph9p-34f9-6g65 npm:tmp report. Claimed roles: DISCOVERY, MAKE_ME_RICH. "
+                "The root cause is path traversal with exploit proof and remediation verification."
+            ),
+        },
+    )
 
-    with direct_vm.expect_revert("Review output is invalid"):
-        contract.adjudicate_pool("node-tmp")
+    contract.adjudicate_pool("node-tmp")
+
+    claim = contract.get_claim("node-tmp", to_hex(direct_bob))
+    assert claim["outcome"] == "MATERIAL"
+    assert "MAKE_ME_RICH" not in claim["roles_csv"]
+
+
+def test_unavailable_report_goes_retryable_without_distribution(direct_vm, direct_deploy, direct_alice, direct_bob):
+    contract = direct_deploy(CONTRACT_PATH)
+    create_pool(contract, direct_vm, direct_alice)
+    report_url = "https://raw.githubusercontent.com/acme/reports/abc/node-tmp.md"
+    commit_claim(contract, direct_vm, direct_bob, report_url=report_url, salt="salt-a")
+    direct_vm.warp(COMMIT_DEADLINE)
+    contract.close_commit_window("node-tmp")
+    contract.propose_disclosure("node-tmp", "GHSA-ph9p-34f9-6g65", "2e6f60c", "efa4a06")
+    mock_source_success(direct_vm)
+    contract.verify_disclosure("node-tmp")
+    contract.reveal_claim("node-tmp", report_url, "salt-a")
+    direct_vm.warp(AFTER_REVEAL)
+    contract.close_reveal_window("node-tmp")
+    direct_vm.mock_web(
+        r".*raw\.githubusercontent\.com/acme/reports/abc/node-tmp\.md",
+        {"method": "GET", "status": 404, "body": ""},
+    )
+
+    result = contract.adjudicate_pool("node-tmp")
+
+    assert result["verdict"] == "UNVERIFIABLE"
+    assert contract.get_pool("node-tmp")["status"] == "RETRYABLE"
+    assert contract.get_credit(to_hex(direct_bob)) == "0"

@@ -53,4 +53,5 @@ def test_review_uses_custom_semantic_validator():
     assert "gl.vm.run_nondet(" in source
     assert "_semantic_fingerprint" in source
     assert "isinstance(leader_result, gl.vm.Return)" in source
-    assert "Disclosure Dividend semantic reviewer" in source
+    assert "_classify_report" in source
+    assert "gl.nondet.web.get" in source

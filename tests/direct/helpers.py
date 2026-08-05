@@ -70,7 +70,14 @@ def mock_source_success(vm):
 def mock_review(vm, result):
     vm.mock_web(
         r".*raw\.githubusercontent\.com/acme/reports/.*",
-        {"method": "GET", "status": 200, "body": "report explains tmp path traversal root cause and exploit proof"},
+        {
+            "method": "GET",
+            "status": 200,
+            "body": (
+                "GHSA-ph9p-34f9-6g65 npm:tmp report with discovery, root cause, "
+                "path traversal, exploit proof, and remediation verification patch evidence"
+            ),
+        },
     )
     vm.mock_llm(r"(?s).*Disclosure Dividend semantic reviewer.*", json.dumps(result))
 
