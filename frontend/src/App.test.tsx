@@ -411,10 +411,13 @@ test("wallet picker closes when the user clicks outside it", async () => {
 test("wallet popover is rendered as a viewport layer above page content", () => {
   const css = readFileSync(join(__dirname, "index.css"), "utf8");
   const walletPopoverRule = css.match(/\.wallet-popover\s*\{(?<body>[^}]+)\}/)?.groups?.body ?? "";
+  const walletGlassRule = css.match(/\.wallet-popover\.glass\s*\{(?<body>[^}]+)\}/)?.groups?.body ?? "";
   const zIndex = Number(walletPopoverRule.match(/z-index:\s*(\d+)/)?.[1] ?? "0");
 
   expect(walletPopoverRule).toContain("position: fixed");
   expect(zIndex).toBeGreaterThanOrEqual(1000);
+  expect(walletGlassRule).toContain("rgba(11, 15, 20, 0.96)");
+  expect(walletGlassRule).toContain("blur(56px)");
 });
 
 test("connect wallet switches the selected provider to Studionet before marking it connected", async () => {
