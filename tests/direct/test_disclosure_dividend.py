@@ -75,6 +75,40 @@ def test_reveal_requires_commitment_preimage(direct_vm, direct_deploy, direct_al
     assert contract.get_claim("node-tmp", to_hex(direct_bob))["outcome"] == "REVEALED"
 
 
+def test_global_github_advisory_html_source_can_open_reveal(direct_vm, direct_deploy, direct_alice, direct_bob):
+    contract = direct_deploy(CONTRACT_PATH)
+    create_pool(contract, direct_vm, direct_alice)
+    commit_claim(contract, direct_vm, direct_bob)
+    direct_vm.warp(COMMIT_DEADLINE)
+    contract.close_commit_window("node-tmp")
+    contract.propose_disclosure(
+        "node-tmp",
+        "GHSA-ph9p-34f9-6g65",
+        "global:github-advisories-2026-08-05",
+        "efa4a06f24374797ae32ab2b6ae39b7a611ae429",
+    )
+    advisory_html = (
+        "<html><title>GHSA-ph9p-34f9-6g65</title>"
+        "<body>GitHub Advisory Database npm package tmp vulnerability</body>"
+        + (" " * 180000)
+        + "</html>"
+    )
+    direct_vm.mock_web(
+        r".*github\.com/advisories/GHSA-ph9p-34f9-6g65.*",
+        {"method": "GET", "status": 200, "body": advisory_html},
+    )
+    direct_vm.mock_web(
+        r".*github\.com/raszi/node-tmp/commit/efa4a06.*\.patch",
+        {"method": "GET", "status": 200, "body": "patch for GHSA-ph9p-34f9-6g65 in raszi/node-tmp"},
+    )
+
+    result = contract.verify_disclosure("node-tmp")
+
+    assert result["source_stage"] == "COMPLETE"
+    assert result["target_match"] == "MATCH"
+    assert contract.get_pool("node-tmp")["status"] == "REVEAL_OPEN"
+
+
 def test_distribution_opens_researcher_and_sponsor_credits(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
     contract = direct_deploy(CONTRACT_PATH)
     create_pool(contract, direct_vm, direct_alice, reward=1000, bond=25)

@@ -12,6 +12,7 @@
     "deploy:studionet": "node scripts/deploy_studionet.mjs deploy",
     "demo:studionet": "node scripts/deploy_studionet.mjs demo",
     "inspect:studionet": "node scripts/deploy_studionet.mjs inspect",
+    "recover:studionet": "node scripts/deploy_studionet.mjs recover",
     "build:frontend": "npm --prefix frontend run build",
     "test:frontend": "npm --prefix frontend run test",
     "check": "powershell -ExecutionPolicy Bypass -File scripts/check.ps1"

@@ -18,6 +18,8 @@ const DEFAULT_RPC_URL = studionet.rpcUrls.default.http[0];
 const TERMINAL_FAILURES = new Set(["UNDETERMINED", "CANCELED", "LEADER_TIMEOUT", "VALIDATORS_TIMEOUT"]);
 const PRIMARY_KEY_VARIABLES = ["STUDIONET_PRIVATE_KEY", "GENLAYER_PRIVATE_KEY", "PRIVATE_KEY"];
 const CLAIMANT_KEY_VARIABLES = ["STUDIONET_INTEGRATOR_PRIVATE_KEY", "STUDIONET_CLAIMANT_PRIVATE_KEY"];
+const DEMO_COMMIT_WINDOW_MS = 240_000;
+const DEMO_REVEAL_WINDOW_MS = 1_200_000;
 
 function parseEnvFile(filePath) {
   if (!existsSync(filePath)) return {};
@@ -260,13 +262,35 @@ async function demo() {
     throw new Error("Set PUBLIC_RAW_BASE to the pushed raw GitHub base URL before running lifecycle demo");
   }
 
+  let reusableDemo = evidence.demo ?? null;
+  if (reusableDemo?.status !== "FINALIZED_LIFECYCLE" && reusableDemo?.poolId) {
+    const pool = await readView(sponsor.client, contractAddress, "get_pool", [reusableDemo.poolId]);
+    const revealDeadline = new Date(pool.reveal_deadline ?? 0).getTime();
+    const stale =
+      pool.status === "RETRYABLE" ||
+      pool.status === "CANCELLED" ||
+      pool.status === "DISTRIBUTED" ||
+      (pool.status === "REVEAL_OPEN" && Number.isFinite(revealDeadline) && revealDeadline <= Date.now());
+    if (stale) {
+      const failedDemos = [...(evidence.failedDemos ?? [])];
+      failedDemos.push({
+        ...reusableDemo,
+        archivedAt: new Date().toISOString(),
+        archivedReason: `stale_${String(pool.status).toLowerCase()}`,
+        finalObservedPool: pool,
+      });
+      mergeEvidence({ failedDemos, demo: null });
+      reusableDemo = null;
+    }
+  }
+
   const demoState = {
-    poolId: evidence.demo?.poolId ?? `node-tmp-${Date.now().toString(36)}`,
+    poolId: reusableDemo?.poolId ?? `node-tmp-${Date.now().toString(36)}`,
     reportUrl: `${repoRawBase.replace(/\/$/, "")}/docs/evidence/public-fixtures/node-tmp-report.md`,
-    salt: evidence.demo?.salt ?? `salt-${Date.now().toString(36)}`,
-    commitDeadline: evidence.demo?.commitDeadline ?? utcTimestamp(90_000),
-    revealDeadline: evidence.demo?.revealDeadline ?? utcTimestamp(180_000),
-    transactions: { ...(evidence.demo?.transactions ?? {}) },
+    salt: reusableDemo?.salt ?? `salt-${Date.now().toString(36)}`,
+    commitDeadline: reusableDemo?.commitDeadline ?? utcTimestamp(DEMO_COMMIT_WINDOW_MS),
+    revealDeadline: reusableDemo?.revealDeadline ?? utcTimestamp(DEMO_REVEAL_WINDOW_MS),
+    transactions: { ...(reusableDemo?.transactions ?? {}) },
   };
   const persist = () =>
     mergeEvidence({
@@ -397,6 +421,86 @@ async function demo() {
   console.log(JSON.stringify({ action: "demo", status: demoState.status, finalReads: demoState.finalReads }, null, 2));
 }
 
+async function recoverCredit(client, address, accountAddress, existing) {
+  if (existing?.status === "FINALIZED") return existing;
+  const credit = await readView(client, address, "get_credit", [accountAddress]);
+  if (BigInt(credit) === 0n) return { status: "SKIPPED_ZERO_CREDIT", creditWei: "0" };
+  return writeFinalized(client, address, "withdraw_credit", [BigInt(credit)], 0n, existing);
+}
+
+async function recoverRevision(revision, label, sponsor, claimant) {
+  const address = revision.primary?.contractAddress;
+  const demoState = revision.demo;
+  if (!address || !demoState?.poolId) return { label, status: "SKIPPED_NO_DEMO" };
+  const recovery = { ...(demoState.recovery ?? {}), label, updatedAt: new Date().toISOString() };
+  const pool = await readView(sponsor.client, address, "get_pool", [demoState.poolId]);
+  recovery.initialPool = pool;
+  if (pool.status !== "CANCELLED" && pool.status !== "DISTRIBUTED") {
+    try {
+      recovery.cancelPool = await writeFinalized(
+        sponsor.client,
+        address,
+        "cancel_pool",
+        [demoState.poolId],
+        0n,
+        recovery.cancelPool,
+      );
+    } catch (error) {
+      recovery.cancelPool = { status: "FAILED", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  try {
+    recovery.sponsorWithdraw = await recoverCredit(
+      sponsor.client,
+      address,
+      sponsor.account.address,
+      recovery.sponsorWithdraw,
+    );
+  } catch (error) {
+    recovery.sponsorWithdraw = { status: "FAILED", message: error instanceof Error ? error.message : String(error) };
+  }
+  try {
+    recovery.claimantWithdraw = await recoverCredit(
+      claimant.client,
+      address,
+      claimant.account.address,
+      recovery.claimantWithdraw,
+    );
+  } catch (error) {
+    recovery.claimantWithdraw = { status: "FAILED", message: error instanceof Error ? error.message : String(error) };
+  }
+  recovery.finalReads = {
+    pool: await readView(sponsor.client, address, "get_pool", [demoState.poolId]),
+    sponsorCreditWei: await readView(sponsor.client, address, "get_credit", [sponsor.account.address]),
+    claimantCreditWei: await readView(sponsor.client, address, "get_credit", [claimant.account.address]),
+    summary: await readView(sponsor.client, address, "get_contract_summary", []),
+  };
+  recovery.status = "RECOVERED_OR_DOCUMENTED";
+  return recovery;
+}
+
+async function recover() {
+  const evidence = readEvidence();
+  const sponsor = signingClient(requirePrivateKey(PRIMARY_KEY_VARIABLES));
+  const claimant = signingClient(requirePrivateKey(CLAIMANT_KEY_VARIABLES));
+  await assertStudionet(sponsor.client);
+  await assertStudionet(claimant.client);
+
+  if (evidence.demo) {
+    evidence.demo.recovery = await recoverRevision(evidence, "primary", sponsor, claimant);
+  }
+  const superseded = [...(evidence.supersededRevisions ?? [])];
+  for (let index = 0; index < superseded.length; index += 1) {
+    if (superseded[index].demo) {
+      superseded[index].demo.recovery = await recoverRevision(superseded[index], `superseded-${index + 1}`, sponsor, claimant);
+    }
+  }
+  evidence.supersededRevisions = superseded;
+  evidence.updatedAt = new Date().toISOString();
+  writeEvidence(evidence);
+  console.log(JSON.stringify({ action: "recover", status: "RECOVERED_OR_DOCUMENTED" }, null, 2));
+}
+
 async function inspect() {
   const client = publicClient();
   await assertStudionet(client);
@@ -422,4 +526,5 @@ const command = process.argv[2] ?? "inspect";
 if (command === "deploy") await deploy();
 else if (command === "demo") await demo();
 else if (command === "inspect") await inspect();
+else if (command === "recover") await recover();
 else throw new Error(`Unknown command: ${command}`);
