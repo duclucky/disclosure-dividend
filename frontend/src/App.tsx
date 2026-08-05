@@ -31,6 +31,7 @@ import {
 } from "./genlayerClient";
 
 type Route =
+  | { name: "landing" }
   | { name: "explorer" }
   | { name: "pool"; poolId: string }
   | { name: "account" }
@@ -210,10 +211,12 @@ function poolFromContract(pool: PoolView): UiPool {
 
 function parseRoute(): Route {
   const hash = window.location.hash.replace(/^#/, "") || "/";
+  if (hash === "/") return { name: "landing" };
+  if (hash === "/explorer") return { name: "explorer" };
   if (hash === "/account") return { name: "account" };
   if (hash === "/create") return { name: "create" };
   if (hash.startsWith("/pools/")) return { name: "pool", poolId: hash.slice("/pools/".length) };
-  return { name: "explorer" };
+  return { name: "landing" };
 }
 
 function useRoute(): Route {
@@ -439,8 +442,11 @@ function Header({
         <span>Disclosure Dividend</span>
       </a>
       <nav className="topnav" aria-label="Primary navigation">
-        <a className={active === "explorer" || active === "pool" ? "active" : ""} href="#/">
+        <a className={active === "explorer" || active === "pool" ? "active" : ""} href="#/explorer">
           Explorer
+        </a>
+        <a className={active === "create" ? "active" : ""} href="#/create">
+          Create Pool
         </a>
         <a className={active === "account" ? "active" : ""} href="#/account">
           My Claims
@@ -513,7 +519,7 @@ function Sidebar({ active }: { active: "overview" | "claims" | "create" }) {
           <span>Active Rewards</span>
         </div>
       </div>
-      <a className={active === "overview" ? "side-link active" : "side-link"} href="#/">
+      <a className={active === "overview" ? "side-link active" : "side-link"} href="#/explorer">
         <LayoutDashboard size={20} aria-hidden="true" />
         Pool Overview
       </a>
@@ -565,6 +571,57 @@ function IntegrationNotice({ loading, error, live }: { loading: boolean; error: 
   return null;
 }
 
+function Landing({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
+  return (
+    <>
+      <Header active="landing" wallet={wallet} />
+      <main className="page landing-page">
+        <section className="hero landing-hero">
+          <p className="eyebrow">Disclosure reward platform</p>
+          <h1>Disclosure Dividend</h1>
+          <p>
+            Disclosure Dividend creates funded reward pools for responsible vulnerability disclosure. Researchers can seal a
+            report before the issue is public, then reveal proof later so GenLayer validators split rewards from public evidence.
+          </p>
+          <div className="landing-actions">
+            <button className="secondary-cta" type="button" onClick={() => goto("/create")}>
+              <FileKey2 size={18} aria-hidden="true" />
+              Create Pool
+            </button>
+            <a className="secondary-cta quiet" href="#/explorer">
+              Explore live pools <ArrowRight size={18} aria-hidden="true" />
+            </a>
+          </div>
+        </section>
+        <section className="landing-explain" aria-labelledby="how-it-works-title">
+          <div className="section-heading">
+            <p className="eyebrow">How it works</p>
+            <h2 id="how-it-works-title">A disclosure reward lifecycle built for public proof</h2>
+          </div>
+          <div className="landing-explain-grid">
+            <article className="glass explain-card">
+              <p className="eyebrow">For sponsors</p>
+              <h2>Fund a locked reward pool</h2>
+              <p>Set the target project, claim capacity, disclosure windows, and GEN reward before any report content is visible.</p>
+            </article>
+            <article className="glass explain-card">
+              <p className="eyebrow">For researchers</p>
+              <h2>Seal before disclosure</h2>
+              <p>Commit a report hash while the vulnerability is private, then reveal the report after the public source is available.</p>
+            </article>
+            <article className="glass explain-card">
+              <p className="eyebrow">For the split</p>
+              <h2>Validators judge public evidence</h2>
+              <p>GenLayer validators classify material contribution categories and open canonical GEN credits after finalization.</p>
+            </article>
+          </div>
+        </section>
+      </main>
+      <Footer live={Boolean(configuredContractAddress)} />
+    </>
+  );
+}
+
 function Explorer({ wallet, poolState }: { wallet: ReturnType<typeof useWallet>; poolState: ReturnType<typeof usePools> }) {
   const [statusFilter, setStatusFilter] = useState<PoolFilter>("ALL");
   const visiblePools = statusFilter === "ALL" ? poolState.pools : poolState.pools.filter((pool) => pool.status === statusFilter);
@@ -574,17 +631,10 @@ function Explorer({ wallet, poolState }: { wallet: ReturnType<typeof useWallet>;
     <>
       <Header active="explorer" wallet={wallet} />
       <main className="page explorer">
-        <section className="hero">
-          <p className="eyebrow">{configuredContractAddress ? "Live reward pools" : "Example reward pools"}</p>
-          <h1>Disclosure Dividend</h1>
-          <p>
-            Seal a vulnerability report before disclosure, then let GenLayer validators divide a funded reward across material,
-            role-backed research contributions.
-          </p>
-          <button className="secondary-cta" type="button" onClick={() => goto("/create")}>
-            <FileKey2 size={18} aria-hidden="true" />
-            Create Pool
-          </button>
+        <section className="workspace-head">
+          <p className="eyebrow">{configuredContractAddress ? "Canonical contract view" : "Example reward pools"}</p>
+          <h1>Live Reward Pools</h1>
+          <p className="intro">Browse pools by lifecycle status and open a pool to seal, reveal, or follow reward finalization.</p>
         </section>
         <IntegrationNotice loading={poolState.loading} error={poolState.error || wallet.error} live={poolState.live} />
         <section className="content-grid" aria-label="Pool explorer">
@@ -1150,6 +1200,7 @@ export default function App() {
   const route = useRoute();
   const wallet = useWallet();
   const poolState = usePools();
+  if (route.name === "landing") return <Landing wallet={wallet} />;
   if (route.name === "pool") return <PoolWorkspace poolId={route.poolId} wallet={wallet} poolState={poolState} />;
   if (route.name === "account") return <Account wallet={wallet} poolState={poolState} />;
   if (route.name === "create") return <CreatePool wallet={wallet} onCreated={poolState.refresh} />;

@@ -348,6 +348,61 @@ input:focus-visible {
   margin-top: 30px;
 }
 
+.landing-hero {
+  margin-bottom: 40px;
+}
+
+.landing-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 30px;
+}
+
+.landing-actions .secondary-cta {
+  margin-top: 0;
+}
+
+.secondary-cta.quiet {
+  color: var(--text);
+  background: rgba(183, 148, 244, 0.08);
+  border-color: rgba(183, 148, 244, 0.26);
+}
+
+.landing-explain {
+  display: grid;
+  gap: 22px;
+}
+
+.section-heading {
+  text-align: center;
+}
+
+.section-heading h2 {
+  max-width: 780px;
+  margin: 8px auto 0;
+}
+
+.landing-explain-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.explain-card {
+  min-height: 230px;
+}
+
+.explain-card h2 {
+  margin: 14px 0 12px;
+}
+
+.explain-card p:not(.eyebrow) {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
 .eyebrow {
   color: var(--primary);
   font-size: 13px;
@@ -402,7 +457,8 @@ input:focus-visible {
 .claim-card,
 .credit-card,
 .form-card,
-.summary-card {
+.summary-card,
+.explain-card {
   padding: 26px;
 }
 
@@ -811,6 +867,7 @@ dd {
   }
 
   .content-grid,
+  .landing-explain-grid,
   .pool-grid,
   .workspace-grid,
   .account-grid,

@@ -135,19 +135,38 @@ function onEip6963Request(listener: () => void) {
   window.addEventListener("eip6963:requestProvider", listener, { signal: eipRequestController.signal });
 }
 
-test("renders the returned explorer layout without fake aggregate stats", () => {
+test("renders a landing page that explains Disclosure Dividend", () => {
   render(<App />);
 
   expect(screen.getByRole("heading", { name: /Disclosure Dividend/i })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: /Explorer/i })).toHaveAttribute("href", "#/");
+  expect(screen.getByText(/reward pools for responsible vulnerability disclosure/i)).toBeInTheDocument();
+  expect(screen.getByText(/How it works/i)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /Explore live pools/i })).toHaveAttribute("href", "#/explorer");
+  expect(screen.queryByText(/Filter Pools/i)).not.toBeInTheDocument();
+});
+
+test("top navigation exposes explorer, create pool, and account routes", () => {
+  render(<App />);
+
+  expect(screen.getByRole("link", { name: /^Explorer$/i })).toHaveAttribute("href", "#/explorer");
+  expect(screen.getByRole("link", { name: /^Create Pool$/i })).toHaveAttribute("href", "#/create");
   expect(screen.getByRole("link", { name: /My Claims/i })).toHaveAttribute("href", "#/account");
+});
+
+test("renders the returned explorer layout without fake aggregate stats", async () => {
+  render(<App />);
+
+  await userEvent.click(screen.getByRole("link", { name: /^Explorer$/i }));
+
+  expect(screen.getByRole("heading", { name: /Live Reward Pools/i })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Connect Wallet/i })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /Create Pool/i })).toBeInTheDocument();
+  expect(screen.getByText(/Filter Pools/i)).toBeInTheDocument();
   expect(screen.queryByText(/Total Value Locked/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/Avg Resolution/i)).not.toBeInTheDocument();
 });
 
 test("shows missing contract address as integration pending instead of live data", () => {
+  window.location.hash = "#/explorer";
   render(<App />);
 
   if (import.meta.env.VITE_CONTRACT_ADDRESS) {
@@ -164,6 +183,7 @@ test("configured contract loading does not show design pool cards as live conten
   if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
   genlayerMocks.readContract.mockImplementation(() => new Promise(() => undefined));
 
+  window.location.hash = "#/explorer";
   render(<App />);
 
   expect(screen.getByText(/Reading Studionet/i)).toBeInTheDocument();
@@ -184,6 +204,7 @@ test("configured contract retries a transient pool read failure before showing l
     return [];
   });
 
+  window.location.hash = "#/explorer";
   render(<App />);
 
   expect(await screen.findByRole("link", { name: /View Details for node-tmp/i })).toBeInTheDocument();
@@ -201,6 +222,7 @@ test("explorer status filters update the visible pool cards", async () => {
     return [];
   });
 
+  window.location.hash = "#/explorer";
   render(<App />);
 
   expect(await screen.findByRole("link", { name: /View Details for commit-pool/i })).toBeInTheDocument();
@@ -236,6 +258,7 @@ test("explorer pool cards use compact GEN rewards", async () => {
     return [];
   });
 
+  window.location.hash = "#/explorer";
   render(<App />);
 
   expect(await screen.findByText("<0.0001 GEN")).toBeInTheDocument();
@@ -249,6 +272,7 @@ test("explorer hero uses product language instead of internal network jargon", a
     return [];
   });
 
+  window.location.hash = "#/explorer";
   render(<App />);
 
   expect(await screen.findByText(/Live reward pools/i)).toBeInTheDocument();
@@ -263,6 +287,9 @@ test("pool workspace exposes one legal primary action and hides system controls"
       return [];
     });
     window.location.hash = "#/pools/node-tmp";
+  }
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) {
+    window.location.hash = "#/explorer";
   }
   render(<App />);
   if (!import.meta.env.VITE_CONTRACT_ADDRESS) {
@@ -496,6 +523,9 @@ test("finalized split keeps technical details contextual", async () => {
       return [];
     });
     window.location.hash = "#/pools/node-tmp";
+  }
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) {
+    window.location.hash = "#/explorer";
   }
   render(<App />);
   if (!import.meta.env.VITE_CONTRACT_ADDRESS) {
