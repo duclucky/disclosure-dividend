@@ -228,6 +228,17 @@ test("account screen uses GEN credits and user-owned actions", async () => {
   expect(screen.queryByText(/Manage Evidence/i)).not.toBeInTheDocument();
 });
 
+test("account screen does not label a configured deployment as pending when wallet is disconnected", async () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+
+  render(<App />);
+  await userEvent.click(screen.getByRole("link", { name: /My Claims/i }));
+
+  expect(screen.getByText(/Connect a browser wallet to read your canonical claim history/i)).toBeInTheDocument();
+  expect(screen.getByText(/Using configured Studionet contract views/i)).toBeInTheDocument();
+  expect(screen.queryByText(/Studionet project evidence remains pending until deployment/i)).not.toBeInTheDocument();
+});
+
 test("account with zero canonical credit cannot submit a withdrawal", async () => {
   if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
   genlayerMocks.readContract.mockImplementation(async ({ functionName }) => {

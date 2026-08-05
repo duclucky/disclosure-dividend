@@ -849,7 +849,7 @@ function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
           </aside>
         </div>
       </main>
-      <Footer live={hasLiveAccount} />
+      <Footer live={Boolean(configuredContractAddress)} />
     </>
   );
 }
