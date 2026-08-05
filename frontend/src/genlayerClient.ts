@@ -52,6 +52,27 @@ export type AccountView = {
 
 export type WalletProvider = {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
+  providers?: WalletProvider[];
+  isBraveWallet?: boolean;
+  isCoinbaseWallet?: boolean;
+  isMetaMask?: boolean;
+  isRabby?: boolean;
+  isTrust?: boolean;
+  isTrustWallet?: boolean;
+  isWalletConnect?: boolean;
+};
+
+export type WalletOption = {
+  id: string;
+  name: string;
+  provider: WalletProvider;
+  icon?: string;
+};
+
+export type WalletSession = {
+  account: string;
+  walletId: string;
+  walletName: string;
 };
 
 declare global {
@@ -63,6 +84,88 @@ declare global {
 export const configuredContractAddress = (import.meta.env.VITE_CONTRACT_ADDRESS as string | undefined)?.trim();
 const contractAddress = configuredContractAddress as `0x${string}` | undefined;
 const readClient = createClient({ chain: studionet });
+const walletStorageKeys = {
+  account: "disclosureDividend.walletAccount",
+  walletId: "disclosureDividend.walletId",
+};
+let activeWalletProvider: WalletProvider | undefined;
+
+type Eip6963ProviderDetail = {
+  info?: {
+    icon?: string;
+    name?: string;
+    rdns?: string;
+    uuid?: string;
+  };
+  provider?: WalletProvider;
+};
+
+function walletStorage() {
+  try {
+    return typeof window === "undefined" ? undefined : window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+function slug(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function walletIdentity(provider: WalletProvider, detail?: Eip6963ProviderDetail): Omit<WalletOption, "provider"> {
+  const announcedName = detail?.info?.name?.trim();
+  const announcedId = detail?.info?.rdns || detail?.info?.uuid || announcedName;
+  if (announcedName && announcedId) {
+    return { id: slug(announcedId), name: announcedName, icon: detail?.info?.icon };
+  }
+  if (provider.isRabby) return { id: "rabby", name: "Rabby" };
+  if (provider.isCoinbaseWallet) return { id: "coinbase-wallet", name: "Coinbase Wallet" };
+  if (provider.isTrust || provider.isTrustWallet) return { id: "trust-wallet", name: "Trust Wallet" };
+  if (provider.isBraveWallet) return { id: "brave-wallet", name: "Brave Wallet" };
+  if (provider.isWalletConnect) return { id: "walletconnect", name: "WalletConnect" };
+  if (provider.isMetaMask) return { id: "metamask", name: "MetaMask" };
+  return { id: "browser-wallet", name: "Browser Wallet" };
+}
+
+function pushWallet(
+  options: WalletOption[],
+  seenProviders: Set<WalletProvider>,
+  seenIds: Set<string>,
+  provider: WalletProvider | undefined,
+  detail?: Eip6963ProviderDetail,
+) {
+  if (!provider?.request || seenProviders.has(provider)) return;
+  const identity = walletIdentity(provider, detail);
+  let id = identity.id || "browser-wallet";
+  if (seenIds.has(id)) {
+    let suffix = 2;
+    while (seenIds.has(`${id}-${suffix}`)) suffix += 1;
+    id = `${id}-${suffix}`;
+  }
+  seenProviders.add(provider);
+  seenIds.add(id);
+  options.push({ id, name: identity.name, provider, icon: identity.icon });
+}
+
+function parseAccounts(accounts: unknown): string[] {
+  return Array.isArray(accounts) ? accounts.map((account) => String(account)).filter(Boolean) : [];
+}
+
+function saveWalletSession(session: WalletSession) {
+  const storage = walletStorage();
+  storage?.setItem(walletStorageKeys.walletId, session.walletId);
+  storage?.setItem(walletStorageKeys.account, session.account);
+}
+
+function clearWalletSession() {
+  const storage = walletStorage();
+  storage?.removeItem(walletStorageKeys.walletId);
+  storage?.removeItem(walletStorageKeys.account);
+}
 
 function requireContractAddress(): `0x${string}` {
   if (!contractAddress) {
@@ -72,13 +175,14 @@ function requireContractAddress(): `0x${string}` {
 }
 
 function writeClient(account: string) {
-  if (!window.ethereum) {
+  const provider = activeWalletProvider ?? window.ethereum;
+  if (!provider) {
     throw new Error("Wallet provider is not available");
   }
   return createClient({
     chain: studionet,
     account: account as `0x${string}`,
-    provider: window.ethereum,
+    provider,
   });
 }
 
@@ -94,17 +198,99 @@ async function waitForAcceptedAndFinalized(hash: TransactionHash) {
   return { hash, accepted, finalized };
 }
 
-export async function connectWallet(): Promise<string> {
-  if (!window.ethereum) {
+export async function discoverWallets(optionsInput: { eip6963DelayMs?: number } = {}): Promise<WalletOption[]> {
+  if (typeof window === "undefined") return [];
+  const options: WalletOption[] = [];
+  const seenProviders = new Set<WalletProvider>();
+  const seenIds = new Set<string>();
+  const delayMs = optionsInput.eip6963DelayMs ?? 0;
+
+  const onAnnounce = ((event: Event) => {
+    const detail = (event as CustomEvent<Eip6963ProviderDetail>).detail;
+    pushWallet(options, seenProviders, seenIds, detail?.provider, detail);
+  }) as EventListener;
+
+  window.addEventListener("eip6963:announceProvider", onAnnounce);
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+  if (delayMs > 0) {
+    await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+  }
+  window.removeEventListener("eip6963:announceProvider", onAnnounce);
+
+  const injected = window.ethereum;
+  const legacyProviders = Array.isArray(injected?.providers) ? injected.providers : [];
+  legacyProviders.forEach((provider) => pushWallet(options, seenProviders, seenIds, provider));
+  pushWallet(options, seenProviders, seenIds, injected);
+
+  return options;
+}
+
+export async function connectWallet(walletId?: string): Promise<WalletSession> {
+  let wallets = await discoverWallets();
+  if (wallets.length === 0 || (walletId && !wallets.some((wallet) => wallet.id === walletId))) {
+    wallets = await discoverWallets({ eip6963DelayMs: 120 });
+  }
+  if (wallets.length === 0) {
     throw new Error("No browser wallet was detected");
   }
-  const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-  const firstAccount = Array.isArray(accounts) ? String(accounts[0] ?? "") : "";
+  const selected = walletId ? wallets.find((wallet) => wallet.id === walletId) : wallets[0];
+  if (!selected) {
+    throw new Error("Selected wallet extension is not available");
+  }
+  const accounts = await selected.provider.request({ method: "eth_requestAccounts" });
+  const firstAccount = parseAccounts(accounts)[0] ?? "";
   if (!firstAccount) {
     throw new Error("Wallet did not return an account");
   }
+  activeWalletProvider = selected.provider;
+  const session = { account: firstAccount, walletId: selected.id, walletName: selected.name };
+  saveWalletSession(session);
   await writeClient(firstAccount).connect("studionet");
-  return firstAccount;
+  return session;
+}
+
+export async function restoreWalletSession(): Promise<WalletSession | null> {
+  const storage = walletStorage();
+  const storedWalletId = storage?.getItem(walletStorageKeys.walletId);
+  const storedAccount = storage?.getItem(walletStorageKeys.account);
+  if (!storedWalletId || !storedAccount) return null;
+
+  const selected = (await discoverWallets()).find((wallet) => wallet.id === storedWalletId);
+  if (!selected) return null;
+
+  const accounts = parseAccounts(await selected.provider.request({ method: "eth_accounts" }));
+  const restoredAccount =
+    accounts.find((account) => account.toLowerCase() === storedAccount.toLowerCase()) ?? accounts[0] ?? "";
+  if (!restoredAccount) {
+    clearWalletSession();
+    return null;
+  }
+
+  activeWalletProvider = selected.provider;
+  const session = { account: restoredAccount, walletId: selected.id, walletName: selected.name };
+  saveWalletSession(session);
+  return session;
+}
+
+export async function getWalletBalance(account: string): Promise<string> {
+  let provider = activeWalletProvider;
+  if (!provider) {
+    const storedWalletId = walletStorage()?.getItem(walletStorageKeys.walletId);
+    provider = (await discoverWallets()).find((wallet) => wallet.id === storedWalletId)?.provider;
+  }
+  if (!provider) {
+    throw new Error("Connected wallet provider is not available");
+  }
+  const balance = await provider.request({ method: "eth_getBalance", params: [account, "latest"] });
+  if (typeof balance === "string" && balance.startsWith("0x")) {
+    return BigInt(balance).toString();
+  }
+  return String(balance ?? "0");
+}
+
+export function disconnectWalletSession() {
+  activeWalletProvider = undefined;
+  clearWalletSession();
 }
 
 export async function fetchPools(): Promise<PoolView[]> {

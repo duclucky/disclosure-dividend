@@ -1,7 +1,39 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, test } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 import App from "./App";
+
+vi.mock("genlayer-js", () => ({
+  createClient: vi.fn(() => ({
+    connect: vi.fn().mockResolvedValue(undefined),
+    readContract: vi.fn().mockResolvedValue([]),
+    waitForTransactionReceipt: vi.fn().mockResolvedValue({}),
+    writeContract: vi.fn().mockResolvedValue("0xhash"),
+  })),
+}));
+
+type TestProvider = {
+  isMetaMask?: boolean;
+  isRabby?: boolean;
+  request: ReturnType<typeof vi.fn>;
+};
+
+function provider(accounts: string[], balance = "0x2a", flags: Partial<TestProvider> = {}): TestProvider {
+  return {
+    ...flags,
+    request: vi.fn(async ({ method }: { method: string }) => {
+      if (method === "eth_requestAccounts" || method === "eth_accounts") return accounts;
+      if (method === "eth_getBalance") return balance;
+      return null;
+    }),
+  };
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  vi.clearAllMocks();
+  Reflect.deleteProperty(window, "ethereum");
+});
 
 test("renders the returned explorer layout without fake aggregate stats", () => {
   render(<App />);
@@ -79,4 +111,58 @@ test("finalized split keeps technical details contextual", async () => {
   const region = screen.getByRole("region", { name: /Technical Details/i });
   expect(within(region).getByText(/GitHub advisory/i)).toBeInTheDocument();
   expect(within(region).getByText(/Explorer/i)).toBeInTheDocument();
+});
+
+test("connect wallet opens a provider picker and connects the chosen extension", async () => {
+  const metamask = provider(["0x1111111111111111111111111111111111111111"], "0x10", { isMetaMask: true });
+  const rabby = provider(["0x2222222222222222222222222222222222222222"], "0x20", { isRabby: true });
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: { providers: [metamask, rabby], request: vi.fn() },
+  });
+
+  render(<App />);
+  await userEvent.click(screen.getByRole("button", { name: /Connect Wallet/i }));
+
+  const dialog = screen.getByRole("dialog", { name: /Choose wallet/i });
+  expect(within(dialog).getByRole("button", { name: /MetaMask/i })).toBeInTheDocument();
+  await userEvent.click(within(dialog).getByRole("button", { name: /Rabby/i }));
+
+  expect(rabby.request).toHaveBeenCalledWith({ method: "eth_requestAccounts" });
+  expect(screen.getByRole("button", { name: /0x2222...2222/i })).toBeInTheDocument();
+});
+
+test("wallet session is restored after reload when the selected provider still exposes accounts", async () => {
+  const metamask = provider(["0x3333333333333333333333333333333333333333"], "0x30", { isMetaMask: true });
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: { providers: [metamask], request: vi.fn() },
+  });
+  localStorage.setItem("disclosureDividend.walletId", "metamask");
+  localStorage.setItem("disclosureDividend.walletAccount", "0x3333333333333333333333333333333333333333");
+
+  render(<App />);
+
+  expect(await screen.findByRole("button", { name: /0x3333...3333/i })).toBeInTheDocument();
+  expect(metamask.request).toHaveBeenCalledWith({ method: "eth_accounts" });
+});
+
+test("connected wallet dropdown shows native balance and supports logout", async () => {
+  const metamask = provider(["0x4444444444444444444444444444444444444444"], "0x64", { isMetaMask: true });
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: { providers: [metamask], request: vi.fn() },
+  });
+
+  render(<App />);
+  await userEvent.click(screen.getByRole("button", { name: /Connect Wallet/i }));
+  await userEvent.click(screen.getByRole("button", { name: /MetaMask/i }));
+  await userEvent.click(screen.getByRole("button", { name: /0x4444...4444/i }));
+
+  const menu = screen.getByRole("dialog", { name: /Wallet account/i });
+  expect(within(menu).getByText(/100 wei/i)).toBeInTheDocument();
+  await userEvent.click(within(menu).getByRole("button", { name: /Logout/i }));
+
+  expect(screen.getByRole("button", { name: /Connect Wallet/i })).toBeInTheDocument();
+  expect(localStorage.getItem("disclosureDividend.walletAccount")).toBeNull();
 });

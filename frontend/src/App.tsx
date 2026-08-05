@@ -15,14 +15,19 @@ import {
   configuredContractAddress,
   connectWallet,
   createPool,
+  disconnectWalletSession,
+  discoverWallets,
   fetchAccount,
   fetchPools,
+  getWalletBalance,
   revealClaim,
+  restoreWalletSession,
   sealClaim,
   withdrawCredit,
   type AccountView,
   type PoolStatus,
   type PoolView,
+  type WalletOption,
 } from "./genlayerClient";
 
 type Route =
@@ -140,15 +145,54 @@ function useRoute(): Route {
 
 function useWallet() {
   const [account, setAccount] = useState("");
+  const [walletName, setWalletName] = useState("");
+  const [wallets, setWallets] = useState<WalletOption[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [balanceWei, setBalanceWei] = useState("");
+  const [balanceBusy, setBalanceBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const connect = useCallback(async () => {
+  const refreshWallets = useCallback(async () => {
+    const detected = await discoverWallets();
+    setWallets(detected);
+    return detected;
+  }, []);
+
+  const openPicker = useCallback(async () => {
     setBusy(true);
     setError("");
     try {
-      const nextAccount = await connectWallet();
-      setAccount(nextAccount);
+      let detected = await refreshWallets();
+      if (detected.length === 0) {
+        detected = await discoverWallets({ eip6963DelayMs: 120 });
+        setWallets(detected);
+      }
+      if (detected.length === 0) {
+        setError("No browser wallet was detected");
+        setPickerOpen(false);
+        return;
+      }
+      setAccountMenuOpen(false);
+      setPickerOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not scan browser wallets");
+    } finally {
+      setBusy(false);
+    }
+  }, [refreshWallets]);
+
+  const connect = useCallback(async (walletId: string) => {
+    setBusy(true);
+    setError("");
+    try {
+      const session = await connectWallet(walletId);
+      setAccount(session.account);
+      setWalletName(session.walletName);
+      setPickerOpen(false);
+      setAccountMenuOpen(false);
+      setBalanceWei("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Wallet connection failed");
     } finally {
@@ -156,7 +200,76 @@ function useWallet() {
     }
   }, []);
 
-  return { account, busy, error, connect };
+  const toggleAccountMenu = useCallback(async () => {
+    if (!account) return;
+    const opening = !accountMenuOpen;
+    setPickerOpen(false);
+    setAccountMenuOpen(opening);
+    if (!opening) return;
+    setBalanceBusy(true);
+    setError("");
+    try {
+      setBalanceWei(await getWalletBalance(account));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not read wallet balance");
+      setBalanceWei("");
+    } finally {
+      setBalanceBusy(false);
+    }
+  }, [account, accountMenuOpen]);
+
+  const logout = useCallback(() => {
+    disconnectWalletSession();
+    setAccount("");
+    setWalletName("");
+    setAccountMenuOpen(false);
+    setPickerOpen(false);
+    setBalanceWei("");
+    setError("");
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function restore() {
+      try {
+        const [detected, session] = await Promise.all([discoverWallets(), restoreWalletSession()]);
+        if (cancelled) return;
+        setWallets(detected);
+        if (session) {
+          setAccount(session.account);
+          setWalletName(session.walletName);
+        }
+      } catch {
+        if (!cancelled) {
+          setAccount("");
+          setWalletName("");
+        }
+      }
+    }
+    void restore();
+    const retry = window.setTimeout(() => void restore(), 500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(retry);
+    };
+  }, []);
+
+  return {
+    account,
+    accountMenuOpen,
+    balanceBusy,
+    balanceWei,
+    busy,
+    error,
+    pickerOpen,
+    walletName,
+    wallets,
+    connect,
+    logout,
+    openPicker,
+    setPickerOpen,
+    toggleAccountMenu,
+  };
 }
 
 function usePools() {
@@ -198,15 +311,12 @@ function shortAddress(address: string) {
 
 function Header({
   active,
-  account,
-  walletBusy,
-  onConnect,
+  wallet,
 }: {
   active: Route["name"];
-  account: string;
-  walletBusy: boolean;
-  onConnect: () => void;
+  wallet: ReturnType<typeof useWallet>;
 }) {
+  const account = wallet.account;
   return (
     <header className="topbar">
       <a className="brand" href="#/" aria-label="Disclosure Dividend home">
@@ -221,10 +331,59 @@ function Header({
           My Claims
         </a>
       </nav>
-      <button className="wallet-button" type="button" onClick={onConnect} disabled={walletBusy}>
-        <Wallet size={18} aria-hidden="true" />
-        {account ? shortAddress(account) : walletBusy ? "Connecting" : "Connect Wallet"}
-      </button>
+      <div className="wallet-area">
+        <button
+          aria-expanded={account ? wallet.accountMenuOpen : wallet.pickerOpen}
+          aria-haspopup="dialog"
+          className={account ? "wallet-button connected" : "wallet-button"}
+          type="button"
+          onClick={account ? wallet.toggleAccountMenu : wallet.openPicker}
+          disabled={wallet.busy}
+        >
+          <Wallet size={18} aria-hidden="true" />
+          {account ? (
+            <>
+              <span className="connected-dot" aria-hidden="true" />
+              {shortAddress(account)}
+            </>
+          ) : wallet.busy ? (
+            "Connecting"
+          ) : (
+            "Connect Wallet"
+          )}
+        </button>
+        {wallet.pickerOpen ? (
+          <section className="wallet-popover glass" role="dialog" aria-label="Choose wallet">
+            <p className="eyebrow">Choose wallet</p>
+            <h2>Connect browser wallet</h2>
+            <div className="wallet-choice-list">
+              {wallet.wallets.map((option) => (
+                <button className="wallet-choice" type="button" key={option.id} onClick={() => wallet.connect(option.id)}>
+                  <span>{option.name}</span>
+                  <small>Detected extension</small>
+                </button>
+              ))}
+            </div>
+            <button className="wallet-popover-close" type="button" onClick={() => wallet.setPickerOpen(false)}>
+              Cancel
+            </button>
+          </section>
+        ) : null}
+        {wallet.accountMenuOpen ? (
+          <section className="wallet-popover wallet-account-popover glass" role="dialog" aria-label="Wallet account">
+            <p className="eyebrow">Connected</p>
+            <h2>{wallet.walletName || "Browser Wallet"}</h2>
+            <p className="wallet-address">{account}</p>
+            <div className="wallet-balance">
+              <span>Native balance</span>
+              <strong>{wallet.balanceBusy ? "Loading..." : `${wallet.balanceWei || "0"} wei`}</strong>
+            </div>
+            <button className="logout-button" type="button" onClick={wallet.logout}>
+              Logout
+            </button>
+          </section>
+        ) : null}
+      </div>
     </header>
   );
 }
@@ -294,7 +453,7 @@ function IntegrationNotice({ loading, error, live }: { loading: boolean; error: 
 function Explorer({ wallet, poolState }: { wallet: ReturnType<typeof useWallet>; poolState: ReturnType<typeof usePools> }) {
   return (
     <>
-      <Header active="explorer" account={wallet.account} walletBusy={wallet.busy} onConnect={wallet.connect} />
+      <Header active="explorer" wallet={wallet} />
       <main className="page explorer">
         <section className="hero">
           <p className="eyebrow">{poolState.live ? "Studionet pools" : "Design data"}</p>
@@ -366,7 +525,10 @@ function PoolWorkspace({
   const [salt, setSalt] = useState("");
   const [txState, setTxState] = useState("");
   const [busy, setBusy] = useState(false);
-  const pool = useMemo(() => poolState.pools.find((item) => item.id === poolId) ?? poolState.pools[0], [poolId, poolState.pools]);
+  const pool = useMemo(
+    () => poolState.pools.find((item) => item.id === poolId) ?? designPools.find((item) => item.id === poolId) ?? poolState.pools[0] ?? designPools[0],
+    [poolId, poolState.pools],
+  );
   const canWrite = Boolean(configuredContractAddress && wallet.account && !busy);
 
   async function onSeal() {
@@ -399,7 +561,7 @@ function PoolWorkspace({
 
   return (
     <>
-      <Header active="pool" account={wallet.account} walletBusy={wallet.busy} onConnect={wallet.connect} />
+      <Header active="pool" wallet={wallet} />
       <Sidebar active="overview" />
       <main className="page with-sidebar workspace">
         <section className="workspace-head">
@@ -525,7 +687,7 @@ function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
 
   return (
     <>
-      <Header active="account" account={wallet.account} walletBusy={wallet.busy} onConnect={wallet.connect} />
+      <Header active="account" wallet={wallet} />
       <Sidebar active="claims" />
       <main className="page with-sidebar account">
         <p className="eyebrow">Connected account</p>
@@ -658,7 +820,7 @@ function CreatePool({ wallet, onCreated }: { wallet: ReturnType<typeof useWallet
 
   return (
     <>
-      <Header active="create" account={wallet.account} walletBusy={wallet.busy} onConnect={wallet.connect} />
+      <Header active="create" wallet={wallet} />
       <Sidebar active="create" />
       <main className="page with-sidebar create-page">
         <p className="eyebrow">Sponsor workflow</p>
