@@ -110,6 +110,34 @@ const statusLabels: Record<PoolStatus, string> = {
   CANCELLED: "Pool closed and funds returned",
 };
 
+const genWeiFactor = 10n ** 18n;
+
+function formatWeiAsGen(value: string | bigint | undefined) {
+  try {
+    const wei = typeof value === "bigint" ? value : BigInt(value || "0");
+    const whole = wei / genWeiFactor;
+    const fraction = wei % genWeiFactor;
+    if (fraction === 0n) return `${whole.toString()} GEN`;
+    const fractionText = fraction.toString().padStart(18, "0").replace(/0+$/, "");
+    return `${whole.toString()}.${fractionText} GEN`;
+  } catch {
+    return "0 GEN";
+  }
+}
+
+function parseGenInputToWei(value: string): bigint | null {
+  const trimmed = value.trim();
+  const match = /^(\d+)(?:\.(\d{1,18}))?$/.exec(trimmed);
+  if (!match) return null;
+  try {
+    const whole = BigInt(match[1]);
+    const fraction = BigInt((match[2] ?? "").padEnd(18, "0") || "0");
+    return whole * genWeiFactor + fraction;
+  } catch {
+    return null;
+  }
+}
+
 function poolFromContract(pool: PoolView): UiPool {
   return {
     id: pool.pool_id,
@@ -117,7 +145,7 @@ function poolFromContract(pool: PoolView): UiPool {
     packageName: pool.target_package,
     issue: pool.ghsa_id ? `${pool.ghsa_id} disclosure` : "Disclosure source pending",
     status: pool.status,
-    reward: `${pool.reward_wei} wei`,
+    reward: formatWeiAsGen(pool.reward_wei),
     rewardWei: pool.reward_wei,
     reservationBondWei: pool.reservation_bond_wei,
     deadline: pool.status === "COMMIT_OPEN" ? `Commit closes ${pool.commit_deadline}` : statusLabels[pool.status],
@@ -407,8 +435,8 @@ function Header({
             <h2>{wallet.walletName || "Browser Wallet"}</h2>
             <p className="wallet-address">{account}</p>
             <div className="wallet-balance">
-              <span>Native balance</span>
-              <strong>{wallet.balanceBusy ? "Loading..." : `${wallet.balanceWei || "0"} wei`}</strong>
+              <span>GenLayer native token</span>
+              <strong>{wallet.balanceBusy ? "Loading..." : formatWeiAsGen(wallet.balanceWei || "0")}</strong>
             </div>
             <button className="logout-button" type="button" onClick={wallet.logout}>
               Logout
@@ -674,7 +702,7 @@ function PoolWorkspace({
                 <label htmlFor="commitment">Commitment digest</label>
                 <input id="commitment" value={commitment} onChange={(event) => setCommitment(event.target.value)} placeholder="64-character sha256 digest" />
                 <label htmlFor="bond">Reservation bond</label>
-                <input id="bond" value={`${pool.reservationBondWei} wei`} readOnly />
+                <input id="bond" value={formatWeiAsGen(pool.reservationBondWei)} readOnly />
                 <button className="primary-cta" type="button" onClick={onSeal} disabled={!canSeal || commitment.length !== 64}>
                   <Fingerprint size={18} aria-hidden="true" />
                   Seal My Report
@@ -714,7 +742,7 @@ function PoolWorkspace({
 
 function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
   const [accountView, setAccountView] = useState<AccountView | null>(null);
-  const [amountWei, setAmountWei] = useState("");
+  const [amountGen, setAmountGen] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -738,7 +766,9 @@ function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
     setBusy(true);
     setStatus("Submitting withdrawal...");
     try {
-      await withdrawCredit(wallet.account, amountWei || accountView?.creditWei || "0");
+      const requestedWei = amountGen.trim() ? parseGenInputToWei(amountGen)?.toString() : accountView?.creditWei || "0";
+      if (!requestedWei) throw new Error("Enter a valid GEN amount");
+      await withdrawCredit(wallet.account, requestedWei);
       setStatus("Withdrawal accepted and finalized.");
       await refresh();
     } catch (err) {
@@ -752,7 +782,7 @@ function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
   const hasLiveAccount = Boolean(configuredContractAddress && wallet.account && accountView);
   const showDesignAccount = !configuredContractAddress;
   const creditWei = parseWeiInput(accountView?.creditWei ?? "0") ?? 0n;
-  const requestedWithdrawWei = amountWei.trim() ? parseWeiInput(amountWei) : creditWei;
+  const requestedWithdrawWei = amountGen.trim() ? parseGenInputToWei(amountGen) : creditWei;
   const canWithdraw = Boolean(
     hasLiveAccount &&
       !busy &&
@@ -785,7 +815,7 @@ function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
                     <p>{claim.report_url || "Report remains sealed until reveal."}</p>
                   </div>
                   <dl>
-                    <div><dt>Bond credit</dt><dd>{claim.bond_wei} wei</dd></div>
+                    <div><dt>Bond credit</dt><dd>{formatWeiAsGen(claim.bond_wei)}</dd></div>
                     <div><dt>Status</dt><dd>{claim.outcome}</dd></div>
                     <div><dt>Pool</dt><dd>{claim.pool_id}</dd></div>
                   </dl>
@@ -829,7 +859,7 @@ function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
           <aside className="credit-card glass">
             <h2>Credit Summary</h2>
             <p>Total available balance</p>
-            <strong>{hasLiveAccount ? `${accountView?.creditWei ?? "0"} wei` : showDesignAccount ? "4,475 GEN" : "0 wei"}</strong>
+            <strong>{hasLiveAccount ? formatWeiAsGen(accountView?.creditWei) : showDesignAccount ? "4,475 GEN" : "0 GEN"}</strong>
             <dl>
               <div><dt>Refundable bonds</dt><dd>{hasLiveAccount ? "Included above" : showDesignAccount ? "25 GEN" : "Canonical view"}</dd></div>
               <div><dt>Reward credits</dt><dd>{hasLiveAccount ? "Canonical view" : showDesignAccount ? "4,450 GEN" : "Canonical view"}</dd></div>
@@ -837,8 +867,8 @@ function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
             </dl>
             {hasLiveAccount ? (
               <>
-                <label htmlFor="withdrawAmount">Withdraw amount</label>
-                <input id="withdrawAmount" value={amountWei} onChange={(event) => setAmountWei(event.target.value)} placeholder={accountView?.creditWei ?? "0"} />
+                <label htmlFor="withdrawAmount">Withdraw amount (GEN)</label>
+                <input id="withdrawAmount" inputMode="decimal" value={amountGen} onChange={(event) => setAmountGen(event.target.value)} placeholder={formatWeiAsGen(accountView?.creditWei).replace(" GEN", "")} />
               </>
             ) : null}
             <button className="primary-cta" type="button" onClick={onWithdraw} disabled={!canWithdraw}>
@@ -861,9 +891,9 @@ function CreatePool({ wallet, onCreated }: { wallet: ReturnType<typeof useWallet
     poolId: "node-tmp",
     targetRepository: "https://github.com/raszi/node-tmp",
     targetPackage: "npm:tmp",
-    rewardWei: "50000",
+    rewardGen: "1",
     claimLimit: "6",
-    reservationBondWei: "25",
+    reservationBondGen: "0.000000000000000025",
     commitDeadline: "2026-08-06T12:00",
     revealDeadline: "2026-08-09T12:00",
   });
@@ -881,6 +911,9 @@ function CreatePool({ wallet, onCreated }: { wallet: ReturnType<typeof useWallet
     setBusy(true);
     setStatus("Submitting funded pool...");
     try {
+      const rewardWei = parseGenInputToWei(form.rewardGen);
+      const reservationBondWei = parseGenInputToWei(form.reservationBondGen);
+      if (rewardWei === null || reservationBondWei === null) throw new Error("Enter valid GEN amounts");
       await createPool(wallet.account, {
         poolId: form.poolId,
         targetRepository: form.targetRepository,
@@ -889,8 +922,8 @@ function CreatePool({ wallet, onCreated }: { wallet: ReturnType<typeof useWallet
         claimLimit: Number(form.claimLimit),
         commitDeadline: isoUtc(form.commitDeadline),
         revealDeadline: isoUtc(form.revealDeadline),
-        reservationBondWei: form.reservationBondWei,
-        rewardWei: form.rewardWei,
+        reservationBondWei: reservationBondWei.toString(),
+        rewardWei: rewardWei.toString(),
       });
       setStatus("Pool accepted and finalized. Refreshing explorer.");
       await onCreated();
@@ -921,8 +954,8 @@ function CreatePool({ wallet, onCreated }: { wallet: ReturnType<typeof useWallet
             <input id="targetPackage" value={form.targetPackage} onChange={(event) => updateForm("targetPackage", event.target.value)} />
             <div className="form-split">
               <label htmlFor="rewardAmount">
-                Reward amount
-                <input id="rewardAmount" inputMode="numeric" value={form.rewardWei} onChange={(event) => updateForm("rewardWei", event.target.value)} />
+                Reward amount (GEN)
+                <input id="rewardAmount" inputMode="decimal" value={form.rewardGen} onChange={(event) => updateForm("rewardGen", event.target.value)} />
               </label>
               <label htmlFor="claimLimit">
                 Claim limit
@@ -960,8 +993,8 @@ function CreatePool({ wallet, onCreated }: { wallet: ReturnType<typeof useWallet
               validators determine material roles from public evidence before credits open.
             </p>
             <dl>
-              <div><dt>Reward</dt><dd>{form.rewardWei} wei</dd></div>
-              <div><dt>Reservation bond</dt><dd>{form.reservationBondWei} wei</dd></div>
+              <div><dt>Reward</dt><dd>{parseGenInputToWei(form.rewardGen) === null ? "Invalid GEN amount" : formatWeiAsGen(parseGenInputToWei(form.rewardGen) ?? 0n)}</dd></div>
+              <div><dt>Reservation bond</dt><dd>{parseGenInputToWei(form.reservationBondGen) === null ? "Invalid GEN amount" : formatWeiAsGen(parseGenInputToWei(form.reservationBondGen) ?? 0n)}</dd></div>
               <div><dt>Maximum claims</dt><dd>{form.claimLimit}</dd></div>
             </dl>
             <button className="primary-cta" type="submit" form="createPoolForm" disabled={!configuredContractAddress || !wallet.account || busy}>

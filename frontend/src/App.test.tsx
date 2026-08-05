@@ -259,8 +259,40 @@ test("account with zero canonical credit cannot submit a withdrawal", async () =
   window.location.hash = "#/account";
   render(<App />);
 
-  expect(await screen.findByText(/0 wei/i)).toBeInTheDocument();
+  expect((await screen.findAllByText(/0 GEN/i)).length).toBeGreaterThan(0);
   expect(screen.getByRole("button", { name: /Withdraw Credit/i })).toBeDisabled();
+});
+
+test("withdraw amount is entered as GEN and submitted to the contract as wei", async () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+  genlayerMocks.readContract.mockImplementation(async ({ functionName }) => {
+    if (functionName === "get_credit") return "1000";
+    if (functionName === "get_account_pool_ids") return [];
+    return [];
+  });
+  const metamask = provider(["0x8888888888888888888888888888888888888888"], "0x80", { isMetaMask: true });
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: { providers: [metamask], request: vi.fn() },
+  });
+  localStorage.setItem("disclosureDividend.walletId", "metamask");
+  localStorage.setItem("disclosureDividend.walletAccount", "0x8888888888888888888888888888888888888888");
+
+  window.location.hash = "#/account";
+  render(<App />);
+
+  await screen.findByText(/0\.000000000000001 GEN/i);
+  await userEvent.type(screen.getByLabelText(/Withdraw amount \(GEN\)/i), "0.000000000000001");
+  await userEvent.click(screen.getByRole("button", { name: /Withdraw Credit/i }));
+
+  await waitFor(() =>
+    expect(genlayerMocks.writeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "withdraw_credit",
+        args: [1000n],
+      }),
+    ),
+  );
 });
 
 test("create pool keeps policy editor layout with real v1 fields", async () => {
@@ -269,13 +301,41 @@ test("create pool keeps policy editor layout with real v1 fields", async () => {
 
   expect(screen.getByRole("heading", { name: /Create Pool Policy/i })).toBeInTheDocument();
   expect(screen.getByLabelText(/Target repository/i)).toBeInTheDocument();
-  expect(screen.getByLabelText(/Reward amount/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/Reward amount \(GEN\)/i)).toBeInTheDocument();
   expect(screen.getByLabelText(/Claim limit/i)).toBeInTheDocument();
   expect(screen.getByLabelText(/Commit deadline/i)).toBeInTheDocument();
   expect(screen.getByLabelText(/Reveal deadline/i)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Create and Fund Pool/i })).toBeInTheDocument();
   expect(screen.queryByText(/APY/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/multi-sig/i)).not.toBeInTheDocument();
+});
+
+test("create pool amount is entered as GEN and submitted to the contract as wei", async () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+  const metamask = provider(["0x7777777777777777777777777777777777777777"], "0x70", { isMetaMask: true });
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: { providers: [metamask], request: vi.fn() },
+  });
+  localStorage.setItem("disclosureDividend.walletId", "metamask");
+  localStorage.setItem("disclosureDividend.walletAccount", "0x7777777777777777777777777777777777777777");
+
+  window.location.hash = "#/create";
+  render(<App />);
+
+  const rewardInput = await screen.findByLabelText(/Reward amount \(GEN\)/i);
+  await userEvent.clear(rewardInput);
+  await userEvent.type(rewardInput, "0.000000000000001");
+  await userEvent.click(screen.getByRole("button", { name: /Create and Fund Pool/i }));
+
+  await waitFor(() =>
+    expect(genlayerMocks.writeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "create_pool",
+        value: 1000n,
+      }),
+    ),
+  );
 });
 
 test("finalized split keeps technical details contextual", async () => {
@@ -420,6 +480,22 @@ test("wallet popover is rendered as a viewport layer above page content", () => 
   expect(walletGlassRule).toContain("blur(56px)");
 });
 
+test("token amounts display GenLayer native token units instead of wei", async () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+  genlayerMocks.readContract.mockImplementation(async ({ functionName, args }) => {
+    if (functionName === "get_pool_ids") return ["node-tmp"];
+    if (functionName === "get_pool" && args?.[0] === "node-tmp") return contractPool("COMMIT_OPEN");
+    return [];
+  });
+  window.location.hash = "#/pools/node-tmp";
+
+  render(<App />);
+
+  expect((await screen.findAllByText(/0\.000000000000001 GEN/)).length).toBeGreaterThan(0);
+  expect(screen.getByDisplayValue("0.000000000000000025 GEN")).toBeInTheDocument();
+  expect(screen.queryByText(/1000 wei/i)).not.toBeInTheDocument();
+});
+
 test("connect wallet switches the selected provider to Studionet before marking it connected", async () => {
   const phantom = chainSwitchingProvider(["0x9999999999999999999999999999999999999999"], "0x1");
   const okx = chainSwitchingProvider(["0x5555555555555555555555555555555555555555"], "0x1", { isOkxWallet: true });
@@ -497,7 +573,7 @@ test("connected wallet dropdown shows native balance and supports logout", async
   await userEvent.click(screen.getByRole("button", { name: /0x4444...4444/i }));
 
   const menu = screen.getByRole("dialog", { name: /Wallet account/i });
-  expect(within(menu).getByText(/100 wei/i)).toBeInTheDocument();
+  expect(within(menu).getByText(/0.0000000000000001 GEN/i)).toBeInTheDocument();
   await userEvent.click(within(menu).getByRole("button", { name: /Logout/i }));
 
   expect(screen.getByRole("button", { name: /Connect Wallet/i })).toBeInTheDocument();
