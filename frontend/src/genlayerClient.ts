@@ -52,9 +52,11 @@ export type AccountView = {
 
 export type WalletProvider = {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
+  ethereum?: WalletProvider;
   providers?: WalletProvider[];
   isBraveWallet?: boolean;
   isCoinbaseWallet?: boolean;
+  isOkxWallet?: boolean;
   isMetaMask?: boolean;
   isPhantom?: boolean;
   isRabby?: boolean;
@@ -79,6 +81,7 @@ export type WalletSession = {
 declare global {
   interface Window {
     ethereum?: WalletProvider;
+    okxwallet?: WalletProvider;
   }
 }
 
@@ -90,6 +93,8 @@ const walletStorageKeys = {
   walletId: "disclosureDividend.walletId",
 };
 let activeWalletProvider: WalletProvider | undefined;
+const announcedProviders: Eip6963ProviderDetail[] = [];
+let eip6963Listening = false;
 
 type Eip6963ProviderDetail = {
   info?: {
@@ -125,6 +130,7 @@ function walletIdentity(provider: WalletProvider, detail?: Eip6963ProviderDetail
   }
   if (provider.isRabby) return { id: "rabby", name: "Rabby" };
   if (provider.isCoinbaseWallet) return { id: "coinbase-wallet", name: "Coinbase Wallet" };
+  if (provider.isOkxWallet) return { id: "okx-wallet", name: "OKX Wallet" };
   if (provider.isPhantom) return { id: "phantom", name: "Phantom" };
   if (provider.isTrust || provider.isTrustWallet) return { id: "trust-wallet", name: "Trust Wallet" };
   if (provider.isBraveWallet) return { id: "brave-wallet", name: "Brave Wallet" };
@@ -142,15 +148,40 @@ function pushWallet(
 ) {
   if (!provider?.request || seenProviders.has(provider)) return;
   const identity = walletIdentity(provider, detail);
-  let id = identity.id || "browser-wallet";
+  const id = identity.id || "browser-wallet";
   if (seenIds.has(id)) {
-    let suffix = 2;
-    while (seenIds.has(`${id}-${suffix}`)) suffix += 1;
-    id = `${id}-${suffix}`;
+    return;
   }
   seenProviders.add(provider);
   seenIds.add(id);
   options.push({ id, name: identity.name, provider, icon: identity.icon });
+}
+
+export function __resetWalletDiscoveryForTests() {
+  announcedProviders.length = 0;
+  activeWalletProvider = undefined;
+}
+
+function rememberAnnouncedProvider(detail: Eip6963ProviderDetail | undefined) {
+  if (!detail?.provider?.request) return;
+  if (announcedProviders.some((announced) => announced.provider === detail.provider)) return;
+  announcedProviders.push(detail);
+}
+
+function ensureEip6963Listener() {
+  if (eip6963Listening || typeof window === "undefined") return;
+  window.addEventListener("eip6963:announceProvider", ((event: Event) => {
+    rememberAnnouncedProvider((event as CustomEvent<Eip6963ProviderDetail>).detail);
+  }) as EventListener);
+  eip6963Listening = true;
+}
+
+async function requestEip6963Providers(delayMs: number) {
+  ensureEip6963Listener();
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+  if (delayMs > 0) {
+    await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+  }
 }
 
 function parseAccounts(accounts: unknown): string[] {
@@ -207,17 +238,12 @@ export async function discoverWallets(optionsInput: { eip6963DelayMs?: number } 
   const seenIds = new Set<string>();
   const delayMs = optionsInput.eip6963DelayMs ?? 0;
 
-  const onAnnounce = ((event: Event) => {
-    const detail = (event as CustomEvent<Eip6963ProviderDetail>).detail;
-    pushWallet(options, seenProviders, seenIds, detail?.provider, detail);
-  }) as EventListener;
+  await requestEip6963Providers(delayMs);
+  announcedProviders.forEach((detail) => pushWallet(options, seenProviders, seenIds, detail.provider, detail));
 
-  window.addEventListener("eip6963:announceProvider", onAnnounce);
-  window.dispatchEvent(new Event("eip6963:requestProvider"));
-  if (delayMs > 0) {
-    await new Promise((resolve) => window.setTimeout(resolve, delayMs));
-  }
-  window.removeEventListener("eip6963:announceProvider", onAnnounce);
+  pushWallet(options, seenProviders, seenIds, window.okxwallet?.ethereum ?? window.okxwallet, {
+    info: { name: "OKX Wallet", rdns: "com.okx.wallet" },
+  });
 
   const injected = window.ethereum;
   const legacyProviders = Array.isArray(injected?.providers) ? injected.providers : [];
@@ -227,15 +253,17 @@ export async function discoverWallets(optionsInput: { eip6963DelayMs?: number } 
   return options;
 }
 
-export async function connectWallet(walletId?: string): Promise<WalletSession> {
-  let wallets = await discoverWallets();
-  if (wallets.length === 0 || (walletId && !wallets.some((wallet) => wallet.id === walletId))) {
+export async function connectWallet(walletOrId?: string | WalletOption): Promise<WalletSession> {
+  let selected = typeof walletOrId === "object" ? walletOrId : undefined;
+  const walletId = typeof walletOrId === "string" ? walletOrId : selected?.id;
+  let wallets = selected ? [selected] : await discoverWallets();
+  if (!selected && (wallets.length === 0 || (walletId && !wallets.some((wallet) => wallet.id === walletId)))) {
     wallets = await discoverWallets({ eip6963DelayMs: 120 });
   }
   if (wallets.length === 0) {
     throw new Error("No browser wallet was detected");
   }
-  const selected = walletId ? wallets.find((wallet) => wallet.id === walletId) : wallets[0];
+  selected = selected ?? (walletId ? wallets.find((wallet) => wallet.id === walletId) : wallets[0]);
   if (!selected) {
     throw new Error("Selected wallet extension is not available");
   }

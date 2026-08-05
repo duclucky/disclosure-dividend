@@ -178,7 +178,8 @@ function useWallet() {
     setBusy(true);
     setError("");
     try {
-      const session = await connectWallet(walletId);
+      const selectedWallet = wallets.find((wallet) => wallet.id === walletId);
+      const session = await connectWallet(selectedWallet ?? walletId);
       setAccount(session.account);
       setWalletName(session.walletName);
       setPickerOpen(false);
@@ -189,7 +190,7 @@ function useWallet() {
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [wallets]);
 
   const toggleAccountMenu = useCallback(async () => {
     if (!account) return;

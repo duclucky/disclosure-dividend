@@ -1,7 +1,8 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "./App";
+import { __resetWalletDiscoveryForTests } from "./genlayerClient";
 
 vi.mock("genlayer-js", () => ({
   createClient: vi.fn(() => ({
@@ -18,6 +19,8 @@ type TestProvider = {
   request: ReturnType<typeof vi.fn>;
 };
 
+let eipRequestController: AbortController;
+
 function provider(accounts: string[], balance = "0x2a", flags: Partial<TestProvider> = {}): TestProvider {
   return {
     ...flags,
@@ -32,8 +35,18 @@ function provider(accounts: string[], balance = "0x2a", flags: Partial<TestProvi
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
+  __resetWalletDiscoveryForTests();
+  eipRequestController = new AbortController();
   Reflect.deleteProperty(window, "ethereum");
 });
+
+afterEach(() => {
+  eipRequestController.abort();
+});
+
+function onEip6963Request(listener: () => void) {
+  window.addEventListener("eip6963:requestProvider", listener, { signal: eipRequestController.signal });
+}
 
 test("renders the returned explorer layout without fake aggregate stats", () => {
   render(<App />);
@@ -140,7 +153,7 @@ test("wallet picker prefers announced providers over a legacy provider hijacked 
     configurable: true,
     value: phantom,
   });
-  window.addEventListener("eip6963:requestProvider", () => {
+  onEip6963Request(() => {
     window.setTimeout(() => {
       window.dispatchEvent(
         new CustomEvent("eip6963:announceProvider", {
@@ -168,6 +181,38 @@ test("wallet picker prefers announced providers over a legacy provider hijacked 
   await waitFor(() => expect(metamask.request).toHaveBeenCalledWith({ method: "eth_requestAccounts" }));
   expect(phantom.request).not.toHaveBeenCalledWith({ method: "eth_requestAccounts" });
   expect(await screen.findByRole("button", { name: /0xaaaa...aaaa/i })).toBeInTheDocument();
+});
+
+test("choosing OKX uses the provider object from the visible picker without rediscovering Phantom", async () => {
+  const phantom = provider(["0x9999999999999999999999999999999999999999"], "0x90");
+  const okx = provider(["0x5555555555555555555555555555555555555555"], "0x50");
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: phantom,
+  });
+  let announced = false;
+  onEip6963Request(() => {
+    if (announced) return;
+    announced = true;
+    window.setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent("eip6963:announceProvider", {
+          detail: {
+            info: { name: "OKX Wallet", rdns: "com.okx.wallet" },
+            provider: okx,
+          },
+        }),
+      );
+    }, 0);
+  });
+
+  render(<App />);
+  await userEvent.click(screen.getByRole("button", { name: /Connect Wallet/i }));
+  await userEvent.click(await screen.findByRole("button", { name: /OKX Wallet/i }));
+
+  await waitFor(() => expect(okx.request).toHaveBeenCalledWith({ method: "eth_requestAccounts" }));
+  expect(phantom.request).not.toHaveBeenCalledWith({ method: "eth_requestAccounts" });
+  expect(await screen.findByRole("button", { name: /0x5555...5555/i })).toBeInTheDocument();
 });
 
 test("wallet session is restored after reload when the selected provider still exposes accounts", async () => {
