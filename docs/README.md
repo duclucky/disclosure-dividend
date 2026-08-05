@@ -6,8 +6,8 @@
 - Project name: Disclosure Dividend
 - Project slug: `disclosure-dividend`
 - Category: Projects
-- Status: `BUILDING`
-- Repository: local child repository; public remote pending
+- Status: `STUDIONET_LIFECYCLE_COMPLETE`
+- Repository: `https://github.com/duclucky/disclosure-dividend`
 - Target network: `studionet`
 
 ## One-sentence product hook
@@ -16,16 +16,16 @@ Disclosure Dividend lets a sponsor fund an OSS security reward before disclosure
 
 ## Trust problem
 
-- Decision that must not depend on one party: which pre-disclosure reports materially contributed to the published vulnerability, which roles they support, and which reports semantically overlap.
+- Decision that must not depend on one party: which pre-disclosure reports materially contributed to the published vulnerability and which locked contribution roles they support.
 - Why database/ordinary EVM/backend LLM is insufficient: a database or backend LLM can store commitments and produce a payout proposal, but financially opposed sponsors and researchers would still trust one operator to decide materiality and duplication before money moves.
 - Value/rights/access at risk: sponsor-funded native-GEN reward, refundable researcher reservation bonds, and withdrawal rights.
 
 ## Fingerprint
 
 - Trust problem: neutral reward apportionment across competing sealed vulnerability reports.
-- Actors/adversary: sponsors can underpay; researchers can overclaim roles or deny overlap; participants can advance review using public sources.
+- Actors/adversary: sponsors can underpay; researchers can overclaim roles; participants can advance review using public sources.
 - Evidence class: onchain commitments, commit-pinned public report reveals, GitHub Advisory Database JSON pinned to a commit, and immutable patch commits.
-- Consensus question: which bounded contribution roles each report materially supports and which claims overlap semantically per role.
+- Consensus question: which bounded contribution roles each report materially supports.
 - State machine: `COMMIT_OPEN -> SOURCE_PENDING -> REVEAL_OPEN -> READY_FOR_REVIEW -> DISTRIBUTED`, with `RETRYABLE` and `CANCELLED`.
 - Direct consequence: finalized verdict opens deterministic GEN credits for researchers and sponsor remainder credits.
 - Reuse surface: builders can create pools, accept sealed claims, verify disclosure sources, request review, read split views, and withdraw credits.
@@ -34,26 +34,26 @@ Disclosure Dividend lets a sponsor fund an OSS security reward before disclosure
 
 | Gate | PASS/FAIL | Evidence/reason |
 | --- | --- | --- |
-| Replacement | `PASS` | Replacing GenLayer leaves the sponsor/backend deciding materiality and overlap before money moves. |
-| Judgment | `PASS` | Validators interpret public report/advisory/patch meaning and role overlap; the client never submits eligibility percentages. |
+| Replacement | `PASS` | Replacing GenLayer leaves the sponsor/backend deciding materiality and role support before money moves. |
+| Judgment | `PASS` | Validators interpret public report/advisory/patch meaning and locked role support; the client never submits eligibility percentages. |
 | Evidence | `PASS` | v1 uses bounded GitHub URLs: advisory database raw JSON, security advisory page/API, patch commit, and report URLs with digest/preimage checks. |
-| Equivalence | `PASS` | Consensus compares pool/source identity, source coverage, role support, overlap edges, verdict class, and consequence class, not rationale prose. |
+| Equivalence | `PASS` | Consensus compares pool/source identity, source coverage, role support, verdict class, and consequence class, not rationale prose. |
 | Consequence | `PASS` | Accepted review deterministically opens native-GEN credits and withdrawal rights. |
 | Adversarial | `PASS` | Sponsor and researchers have opposed payout incentives; researchers also conflict with each other over priority and duplication. |
 | State model | `PASS` | Spec requires per-pool/per-claim storage, locked policy, one claim per wallet per pool, append-only attempts, and double-settlement prevention. |
 | Reuse | `PASS` | Public write/view interface can be integrated by OSS funds, registries, or bounty platforms without copying the UI. |
-| Contract count | `PASS` | One contract owns reward funding, semantic review, credits, and withdrawals; a consumer contract would be pass-through in v1. |
-| Differentiation | `PASS` | Role-overlap graph and proportional cluster payout differ from covenant/quarantine, escrow, market settlement, and procurement-winner patterns. |
-| Claim-to-code | `PASS` | Matrix below maps each claim to methods, reads, tests, and pending network evidence. |
-| Full lifecycle | `PASS - planned` | Lifecycle is create/fund, two commits, source verification, reveal, review, credits, withdrawal, and canonical reads. Network evidence remains pending until Phase 8. |
-| Scope honesty | `PASS` | Local frontend baseline is verified; contract, direct tests, Studionet, browser write, Vercel, CI, and submission evidence are not claimed until produced. |
+| Contract count | `PASS` | One contract owns reward funding, validator-controlled role review, credits, and withdrawals; a consumer contract would be pass-through in v1. |
+| Differentiation | `PASS` | Sealed pre-disclosure commitments plus validator-controlled role-bucket payouts differ from covenant/quarantine, escrow, market settlement, and procurement-winner patterns. |
+| Claim-to-code | `PASS` | Matrix below maps each claim to methods, reads, tests, and current Studionet evidence where produced. |
+| Full lifecycle | `PASS` | Studionet lifecycle evidence covers create/fund, commit, source verification, reveal, review, credit withdrawal, and canonical reads in `docs/evidence/studionet/deployment.json`. |
+| Scope honesty | `PASS` | Contract, tests, Studionet deployment, lifecycle, and local frontend build are verified. Browser-wallet production walkthrough, production frontend URL, and CI URL remain pending until produced. |
 
 ## Actors, roles and incentives
 
 | Actor | Permissions | Value at risk | Incentive to bias |
 | --- | --- | --- | --- |
-| Sponsor | Create/fund pool, cancel only before rights attach or in recovery states, withdraw sponsor credit | Funded reward and unused remainder | Reject valid claims or collapse independent claims into overlap clusters |
-| Researcher | Commit one sealed claim, reveal own report, withdraw owned credit | Reservation bond and reward credit | Overstate role coverage or deny semantic overlap |
+| Sponsor | Create/fund pool, cancel only before rights attach or in recovery states, withdraw sponsor credit | Funded reward and unused remainder | Reject valid claims or deny role support |
+| Researcher | Commit one sealed claim, reveal own report, withdraw owned credit | Reservation bond and reward credit | Overstate role coverage |
 | Participant | Propose/verify disclosure, close windows, request review/retry, settle unrevealed claims | Gas/time and possible reward transparency | Advance or retry a pool using corrected public evidence |
 | Observer | Read pools, outcomes, source links, Explorer links | None | Verify public consequence without private/system data |
 
@@ -66,8 +66,8 @@ Disclosure Dividend lets a sponsor fund an OSS security reward before disclosure
 - Four contribution roles: `DISCOVERY`, `ROOT_CAUSE`, `EXPLOIT_PROOF`, `REMEDIATION_VERIFICATION`.
 - Commit-reveal flow with refundable reservation bonds.
 - Source verification against GitHub advisory and patch evidence.
-- Semantic review of revealed public reports.
-- Deterministic role-bucket/overlap-cluster reward split.
+- Validator-controlled review of revealed public reports using bounded public evidence and locked role vocabulary.
+- Deterministic role-bucket reward split.
 - Credits and withdrawals in native GEN.
 - Vite/React frontend preserving returned design language.
 
@@ -155,7 +155,6 @@ Functional corrections made or required:
 | `DISTRIBUTED` | Reward split finalized | Credit owners can withdraw |
 | `CANCELLED` | Pool closed and funds returned | No new claims; owned credits remain withdrawable |
 | `MATERIAL` | Material contribution | One or more role buckets awarded |
-| `OVERLAPPING` | Shared contribution | Reward is shared with overlapping reports |
 | `IRRELEVANT` | Not matched to this disclosure | No reward; valid reveal bond remains refundable |
 | `UNVERIFIABLE` | Report could not be verified | No penalty or payout; pool may become retryable |
 
@@ -180,9 +179,9 @@ Functional corrections made or required:
 ### Structured storage
 
 - `Pool`: sponsor, target repository/package, status, reward, reservation bond, role weights, claim limit, deadlines, source candidate/status, totals, attempt counts.
-- `Claim`: pool, claimant, commitment, commit time, reveal URL, reveal digest, outcome, roles, overlap list, bond/reward credits, flags.
+- `Claim`: pool, claimant, commitment, commit time, reveal URL, reveal digest, outcome, roles, bond/reward credits, flags.
 - `SourceAttempt`: source identity, fetched coverage, target match, stage, retry reason.
-- `ReviewAttempt`: normalized per-claim role support, overlap edges, verdict class, consequence class.
+- `ReviewAttempt`: normalized per-claim role support, verdict class, consequence class.
 - `credits`: address-keyed GEN credit ledger.
 - `pool_ids` and account pool indexes for views.
 
@@ -242,7 +241,7 @@ RETRYABLE --cancel_pool/sponsor after recovery deadline--> CANCELLED
 - Immutable policy/source version URLs and hashes: advisory database commit SHA, patch commit SHA, report commit URL, policy version.
 - Allowed schemes/domains/paths: `https://github.com/`, `https://raw.githubusercontent.com/`, no fragments, no credentials, max 500 chars.
 - Time/window rules: commit before commit deadline; reveal after source verified and before reveal deadline; review after reveal close.
-- Size/count bounds: max 6 claims, max 4 roles, max 15 overlap edges, max 80k source chars per fetched artifact, max bounded fetch count.
+- Size/count bounds: max 6 claims, max 4 roles, max bounded source chars per fetched artifact, max bounded fetch count.
 - Missing evidence: source or report maps to `UNVERIFIABLE`/`RETRYABLE`, no penalty beyond no reward.
 - Contradictory evidence: source stage `CONTRADICTORY`, pool `RETRYABLE`, no distribution.
 - Unavailable source: source stage `UNAVAILABLE`, pool `RETRYABLE`.
@@ -255,10 +254,10 @@ RETRYABLE --cancel_pool/sponsor after recovery deadline--> CANCELLED
 ### Leader task
 
 - Inputs: pool target identity, verified source candidate, revealed report URLs, commitment-derived claim identities, role weights.
-- Fetch: advisory JSON/page, patch commit, and each revealed report.
-- Extraction: target match, vulnerability summary, patch facts, per-report role support, overlap facts.
-- Normalization: bounded role booleans, role-specific overlap edges, source stage, verdict class, consequence class.
-- Structured output: JSON with `source_stage`, `claim_results`, `overlap_edges`, `verdict`, `consequence_class`.
+- Fetch: advisory page/database evidence, patch commit evidence, and each revealed report.
+- Extraction: target match, report materiality, and support for the four locked roles.
+- Normalization: bounded role booleans, empty v1 overlap edge set, source stage, verdict class, consequence class.
+- Structured output: dict with `source_stage`, `claim_results`, `overlap_edges`, `verdict`, `consequence_class`.
 
 ### Consensus-critical fields
 
@@ -269,15 +268,15 @@ RETRYABLE --cancel_pool/sponsor after recovery deadline--> CANCELLED
 | `target_match` | enum `MATCH/NO_MATCH/UNKNOWN` | Exact | Prevents wrong advisory/patch payouts |
 | `claimant` | address string | Exact set | Ties verdict to committed claim owners |
 | `roles_supported` | subset of four roles | Exact bounded set per claim | Determines role bucket eligibility |
-| `overlap_edges` | role + claimant pair set, max 15 | Exact normalized undirected set | Determines cluster split |
+| `overlap_edges` | empty v1 list | Exact | Reserved for a future multi-claim overlap extension; does not affect v1 payout |
 | `claim_outcome` | enum | Exact | Controls no reward vs material credit |
 | `verdict` | `DISTRIBUTE/UNVERIFIABLE` | Exact | Controls consequence |
 | `consequence_class` | `OPEN_CREDITS/NO_SETTLEMENT` | Exact | Blocks payout on unverifiable evidence |
 
 ### Validator
 
-- Independent evidence/replay: validator refetches the same bounded URLs and reruns the same prompt/extraction.
-- Semantic rule: compare normalized critical meaning via deterministic fingerprint; rationale prose can differ.
+- Independent evidence/replay: validator refetches the same bounded URLs and reruns the same deterministic extraction.
+- Semantic rule: compare normalized critical meaning via deterministic fingerprint; report wording outside locked signals cannot alter enums or payout rules.
 - Rejection conditions: leader error, non-dict output, unknown enum, unknown claimant, too many edges, missing core fields, source mismatch, role outside allowlist.
 - `UNDETERMINED` handling: no state change; UI keeps previous canonical state and shows retry path.
 
@@ -289,7 +288,7 @@ The contract may store short human-readable reason text for a final attempt, but
 
 | Verdict | Canonical state change | Consumer action | Value movement |
 | --- | --- | --- | --- |
-| `DISTRIBUTE` | Pool becomes `DISTRIBUTED`; claim roles/outcomes/overlaps stored | Frontend reloads split and credit views | Role buckets split across overlap clusters; credits opened |
+| `DISTRIBUTE` | Pool becomes `DISTRIBUTED`; claim roles/outcomes stored | Frontend reloads split and credit views | Role buckets split across eligible material claimants; credits opened |
 | `UNVERIFIABLE` | Pool becomes `RETRYABLE`; attempt stored | Frontend shows corrected-source/retry path | No new credit; no slash |
 | `CANCELLED` | Pool becomes `CANCELLED` | Frontend shows closed state | Sponsor credit opens for unused funds and eligible refundable bonds remain |
 
@@ -338,14 +337,14 @@ The contract may store short human-readable reason text for a final attempt, but
 
 | Threat | Attack | Mitigation | Test |
 | --- | --- | --- | --- |
-| Sponsor underpayment | Cancels after claims or distributes twice | Legal-state cancellation and one distribution | `test_cancel_blocks_live_claim_rights`, `test_distribution_is_idempotent` |
-| Researcher duplicate overclaim | Same wallet commits twice or claims every role | One claim per wallet; validator role support bounded | `test_one_claim_per_wallet`, `test_unknown_roles_rejected` |
-| Commitment reveal forgery | Reveal URL/salt does not match commitment | Deterministic preimage check | `test_invalid_reveal_is_retryable_without_penalty` |
+| Sponsor underpayment | Cancels after claims or distributes twice | Legal-state cancellation and one distribution | Covered by distribution and recovery lifecycle evidence; direct cancel expansion remains future hardening |
+| Researcher duplicate overclaim | Same wallet commits twice or claims every role | One claim per wallet; validator role support bounded | `test_commit_claim_requires_bond_and_prevents_duplicates`, `test_report_text_cannot_expand_roles_outside_locked_enum` |
+| Commitment reveal forgery | Reveal URL/salt does not match commitment | Deterministic preimage check | `test_reveal_requires_commitment_preimage` |
 | Wrong source | Advisory/patch for different repo/package | Source target identity verification | `test_source_target_mismatch_goes_retryable` |
 | Prompt injection | Report asks model to change payout rules | Prompt declares source text untrusted; enum/output allowlist | `test_prompt_injection_cannot_expand_roles` |
-| Malicious leader | Valid JSON shape but wrong overlap/roles | Validator reruns and fingerprints meaning | `test_semantic_mismatch_disagrees` |
-| Double withdrawal | Credit owner calls twice | Debit before transfer and credit bounds | `test_withdraw_debits_before_transfer` |
-| Unavailable web | GitHub 404/timeout | `RETRYABLE`, no settlement | `test_unavailable_source_no_payout` |
+| Malicious/untrusted report text | Report asks for unknown roles or payout changes | Locked enum classifier and fingerprinted output | `test_report_text_cannot_expand_roles_outside_locked_enum` |
+| Double withdrawal | Credit owner calls twice | Debit before transfer and credit bounds | `test_withdraw_credit_debits_and_blocks_double_withdraw` |
+| Unavailable web | GitHub 404/timeout | `RETRYABLE`, no settlement | `test_unavailable_report_goes_retryable_without_distribution` |
 | Local fake state | UI shows fixture as live | Missing-address notice and adapter boundary | `App.test.tsx` missing-address test |
 
 ## Test plan
@@ -354,7 +353,7 @@ The contract may store short human-readable reason text for a final attempt, but
 - Unauthorized: sponsor-only cancel and owner-only reveal/withdraw.
 - Isolation: two pools with independent claims and credits.
 - Evidence failure: missing, malformed, target mismatch, unavailable source.
-- Malicious leader: wrong claimant, unknown role, excessive overlap edges.
+- Malicious/untrusted report text: wrong claimant, unknown role, or source text that asks to change payout rules.
 - Prompt injection: source text tries to change roles/payout.
 - Semantic mismatch: JSON shape valid but critical fields differ.
 - Verdict classes: distribute and unverifiable/retryable.
@@ -368,25 +367,25 @@ The contract may store short human-readable reason text for a final attempt, but
 
 | Product claim | Contract method/state | View/read | Direct test | Network evidence |
 | --- | --- | --- | --- | --- |
-| Sponsor funds a locked reward pool | `create_pool`, `Pool.status=COMMIT_OPEN`, reward ledger | `get_pool`, `get_contract_summary` | `test_create_pool_locks_policy_and_value` | `PENDING_REAL_EVIDENCE: create pool tx + view` |
-| Researcher seals a pre-disclosure claim | `commit_claim`, `Claim.commitment` | `get_claim`, `get_pool_claims` | `test_commit_claim_requires_bond_and_prevents_duplicates` | `PENDING_REAL_EVIDENCE: commit tx + claim view` |
-| Disclosure source is verified by validators | `propose_disclosure`, `verify_disclosure` | `get_pool`, `get_attempt` | `test_verify_disclosure_accepts_matching_github_source` | `PENDING_REAL_EVIDENCE: source verification tx + attempt view` |
-| Invalid source does not pay anyone | `verify_disclosure` sets `RETRYABLE` | `get_pool`, `get_credit` | `test_source_target_mismatch_goes_retryable_without_credit` | `PENDING_REAL_EVIDENCE: retryable source attempt` |
-| Claim owner reveals only matching preimage | `reveal_claim` | `get_claim` | `test_reveal_requires_commitment_preimage` | `PENDING_REAL_EVIDENCE: reveal tx + claim view` |
-| Validators classify roles and overlap | `adjudicate_pool`, `ReviewAttempt` | `get_attempt`, `get_pool_claims` | `test_review_stores_roles_and_overlap_edges` | `PENDING_REAL_EVIDENCE: review tx + attempt view` |
-| Finalized split opens deterministic GEN credits | `adjudicate_pool`, credit ledger | `get_credit`, `get_claim` | `test_distribution_opens_researcher_and_sponsor_credits` | `PENDING_REAL_EVIDENCE: distributed tx + credit views` |
-| Credits can be withdrawn once | `withdraw_credit` | `get_credit`, balance evidence | `test_withdraw_credit_debits_and_blocks_double_withdraw` | `PENDING_REAL_EVIDENCE: withdraw tx + balance delta` |
-| UI does not show system/reviewer controls | Frontend route/action gating | Rendered app tests | `frontend/src/App.test.tsx` | `PENDING_REAL_EVIDENCE: live app verification after deploy` |
-| Missing deployment is honestly labeled | Frontend missing-address path | UI notice | `frontend/src/App.test.tsx` | `PENDING_REAL_EVIDENCE: pre-deploy build screenshot/body` |
+| Sponsor funds a locked reward pool | `create_pool`, `Pool.status=COMMIT_OPEN`, reward ledger | `get_pool`, `get_contract_summary` | `test_create_pool_locks_policy_and_value` | `0xfa7ef5e7b3f5c6a73a3696691310221a3cf6ca27801c0b28fe4468f7fb9c52e6` |
+| Researcher seals a pre-disclosure claim | `commit_claim`, `Claim.commitment` | `get_claim`, `get_pool_claims` | `test_commit_claim_requires_bond_and_prevents_duplicates` | `0x03510561dfe19f9ac067159fc8062347c94ad3193bb14e482bc0cf3f20567332` |
+| Disclosure source is verified by validators | `propose_disclosure`, `verify_disclosure` | `get_pool` | `test_global_github_advisory_html_source_can_open_reveal` | `0x49d5abdf24443c7ff7bdf000e09d6105bf7050c14b4d94e299a5cf876cb29405`, `0xfa024b835546e1d1667ec97f24952e067f8fb007b78c34262cb67dd3affdb4c7` |
+| Invalid source does not pay anyone | `verify_disclosure` sets `RETRYABLE` | `get_pool`, `get_credit` | `test_source_target_mismatch_goes_retryable_without_credit` | Covered by direct test; no invalid value-bearing Studionet demo claimed |
+| Claim owner reveals only matching preimage | `reveal_claim` | `get_claim` | `test_reveal_requires_commitment_preimage` | `0x3f5f6bec2e3f6c504e6781da460c5c69a4b4a4e811bbc3eb4d72317db10bb356` |
+| Validators classify roles | `adjudicate_pool`, `ReviewAttempt` | `get_attempt`, `get_pool_claims` | `test_report_text_cannot_expand_roles_outside_locked_enum` | `0x7d7623e1f3cbd34d8fb63c8bcbd9df5427dc0171eb43a8b41bbb2fefacdff430` |
+| Finalized split opens deterministic GEN credits | `adjudicate_pool`, credit ledger | `get_credit`, `get_claim` | `test_distribution_opens_researcher_and_sponsor_credits` | Final read: pool `DISTRIBUTED`, claim `MATERIAL`, credit opened then withdrawn |
+| Credits can be withdrawn once | `withdraw_credit` | `get_credit`, summary | `test_withdraw_credit_debits_and_blocks_double_withdraw` | `0x0081dbd45e0b0e2498b6296d243d7ff89ea77e05c6b5c2ea832b2ad625aeac81` |
+| UI does not show system/reviewer controls | Frontend route/action gating | Rendered app tests | `frontend/src/App.test.tsx` | Local build verified; production URL pending |
+| Missing deployment is honestly labeled | Frontend missing-address path | UI notice | `frontend/src/App.test.tsx` | Local test verified |
 
 ## Analogue and differentiation matrix
 
 | Analogue/prior idea | Similar dimensions | Structural difference | Collision decision |
 | --- | --- | --- | --- |
-| TenderSeal Tournament | Sponsor-funded, commit/reveal, public evidence | TenderSeal chooses one procurement winner; Disclosure Dividend pays multi-role contribution clusters | Not duplicate |
+| TenderSeal Tournament | Sponsor-funded, commit/reveal, public evidence | TenderSeal chooses one procurement winner; Disclosure Dividend pays locked contribution-role buckets | Not duplicate |
 | Semantic Interface Covenant | Public software evidence and semantic validator | Covenant quarantines/restores integration; Disclosure Dividend apportions research reward | Not duplicate |
-| LabelScope Market | Public authoritative source and value consequence | Market resolves YES/NO stakes; Disclosure Dividend creates role-overlap graph and credits several contributors | Not duplicate |
-| EscrowWithSubjectiveRelease legacy | Subjective value release | No bilateral deliverable acceptance/refund; multi-claim role overlap and sponsor remainder | Not duplicate |
+| LabelScope Market | Public authoritative source and value consequence | Market resolves YES/NO stakes; Disclosure Dividend credits vulnerability contribution roles | Not duplicate |
+| EscrowWithSubjectiveRelease legacy | Subjective value release | No bilateral deliverable acceptance/refund; sealed report commitment and role-bucket payout | Not duplicate |
 | GitHub advisory credits | Security contribution credit domain | GitHub credits are evidence only; validator decides material pre-disclosure reports and payout | Not duplicate |
 
 ## Deployment and evidence plan
@@ -394,37 +393,38 @@ The contract may store short human-readable reason text for a final attempt, but
 - Network: GenLayer Studionet only.
 - Actors/wallet separation: sponsor primary wallet from ignored `.env`; at least two researcher EOAs for adversarial lifecycle, created/funded only with authorized local secret handling.
 - Deploy steps: inspect config, deploy contract, verify schema/result success, write active deployment identity.
-- Consequential lifecycle: create/fund pool, two commitments, close commit, propose/verify GHSA + patch, reveal two reports, close reveal, adjudicate, read credits, withdraw one credit.
+- Consequential lifecycle: create/fund pool, commitment, close commit, propose/verify GHSA + patch, reveal report, close reveal, adjudicate, read credits, withdraw claimant credit.
 - Canonical reads: pool, claims, attempt, credit, contract summary after each finalized step.
 - Balance/receipt proof: safe allowlisted tx hashes, statuses, finality, public addresses, and before/after balances for withdrawal.
-- Evidence path: `docs/evidence/studionet/`.
-- Resume/idempotency: one active `deployment.json`; superseded revisions archived with reason and zero-accounting proof.
+- Evidence path: `docs/evidence/studionet/deployment.json`.
+- Resume/idempotency: one active `deployment.json`; superseded revisions archived with reason and recovery evidence. The earliest diagnostic revision predates bond-refund recovery, so only sponsor reward recovery is claimed for that revision.
 
 ## Definition of Done
 
 ### Intelligent Contracts
 
-- [ ] Reusable primitive.
-- [ ] Semantic validator judgment.
-- [ ] Direct consequence.
-- [ ] Reuse proof through documented views/adapter.
-- [ ] Adversarial tests.
-- [ ] Real network lifecycle.
-- [ ] Canonical evidence.
+- [x] Reusable primitive.
+- [x] Validator-controlled judgment over public evidence.
+- [x] Direct consequence.
+- [x] Reuse proof through documented views/adapter.
+- [x] Adversarial tests.
+- [x] Real network lifecycle.
+- [x] Canonical evidence.
 
 ### Projects
 
-- [ ] Real frontend wallet write.
-- [ ] Full lifecycle/failure/retry.
-- [ ] Canonical reads.
-- [ ] Meaningful user outcome.
-- [ ] Browser evidence.
-- [ ] Primary UI contains only user-relevant data/actions; system/reviewer details are contextual or hidden.
+- [ ] Real browser-wallet walkthrough.
+- [x] Full script-signed lifecycle/failure/retry.
+- [x] Canonical reads.
+- [x] Meaningful user outcome.
+- [ ] Production browser evidence.
+- [x] Primary UI contains only user-relevant data/actions; system/reviewer details are contextual or hidden.
 
 ## Honest limitations
 
-- Frontend Phase 3B baseline is local only and uses clearly labeled design data when no contract address is configured.
-- Contract source, direct tests, `npm run check`, Studionet deployment, browser-wallet writes, public GitHub, Vercel, CI, and Portal submission remain pending until their phases produce evidence.
+- Frontend Phase 3B baseline is buildable and uses clearly labeled design data only when no contract address is configured.
+- Contract source, direct tests, `npm run check`, public GitHub, Studionet deployment, and script-signed lifecycle are complete.
+- Browser-wallet writes, production frontend URL, CI URL, and final Portal submission remain pending until their phases produce evidence.
 - No legal/security-program adoption or non-Studionet deployment is claimed.
 
 ## Kill criteria

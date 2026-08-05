@@ -1,30 +1,50 @@
 # Disclosure Dividend
 
-Disclosure Dividend is a GenLayer dApp that divides a funded open-source
-security reward among researchers whose sealed pre-disclosure reports made
-material, non-duplicative contributions to a published vulnerability.
+Disclosure Dividend is a GenLayer Projects-track dApp that divides a funded open-source security reward among researchers whose sealed pre-disclosure reports prove locked contribution roles against a later public advisory and patch.
 
-Status: **BUILDING - Stage 2 implementation**.
+Status: **Studionet lifecycle complete; frontend production deployment pending**.
 
-The full Stage 2 specification is in [docs/README.md](docs/README.md). The
-returned frontend has been audited and converted into a buildable Vite/React
-baseline. Contract source, direct tests, Studionet deployment, browser-wallet
-evidence, public repository, and production deployment remain pending until
-their phases produce evidence.
+## Live project evidence
+
+- Repository: `https://github.com/duclucky/disclosure-dividend`
+- Studionet contract: `0x484f2a86CAFa7E43894d78F846ad132df8Dc6F5A`
+- Source commit: `94a4597cf37d5c8dbb002b52fd7fbcd54afed45a`
+- Lifecycle evidence: `docs/evidence/studionet/deployment.json`
+- Final demo state: `FINALIZED_LIFECYCLE`
+- Final pool: `node-tmp-msfnpd9s`, status `DISTRIBUTED`
+- Final accounting: `total_received=1025`, `total_withdrawn=1025`, `contract_liability=0`
 
 ## Why GenLayer
 
-Different researchers may describe the same root cause, exploit path, or
-remediation evidence in different language. A sponsor-run database or one LLM
-can store those claims, but it leaves financially opposed contributors trusting
-the sponsor to decide materiality and overlap. GenLayer validators will inspect
-the same bounded public evidence, agree on contribution meaning, and make that
-accepted verdict open native-GEN withdrawal credits.
+Researchers and sponsors have conflicting incentives over whether a sealed report materially contributed to a public vulnerability disclosure. A sponsor database, ordinary EVM contract, or backend LLM would still let one operator decide contribution roles before money moves. Disclosure Dividend makes validators independently inspect bounded public evidence, then turns the finalized verdict into native GEN withdrawal credits.
 
-## Planned track
+## What validators inspect
 
-- Category: Projects
-- Network: GenLayer Studionet
-- Architecture: one Intelligent Contract plus a wallet-enabled Vite/React dApp
-- Current boundary: local frontend baseline exists; contract and network
-  lifecycle are not yet claimed
+- The GitHub advisory for `GHSA-ph9p-34f9-6g65`.
+- The immutable patch commit `efa4a06f24374797ae32ab2b6ae39b7a611ae429`.
+- The revealed public report URL that matches the claimant's earlier commitment.
+- Locked role vocabulary: `DISCOVERY`, `ROOT_CAUSE`, `EXPLOIT_PROOF`, `REMEDIATION_VERIFICATION`.
+
+## Implementation
+
+- Contract: `contracts/disclosure_dividend.py`
+- Frontend: `frontend/`
+- Full specification: `docs/README.md`
+- Direct/static tests: `tests/`
+- Deployment tooling: `scripts/deploy_studionet.mjs`
+
+## Verification
+
+Latest local verification:
+
+```powershell
+npm run check
+```
+
+Result: GenVM lint/schema check passed, 13 direct/static contract tests passed, 3 deployment parser tests passed, frontend TypeScript passed, 6 frontend tests passed, and production frontend build completed. Vite reports a non-blocking bundle-size warning.
+
+## Honest limits
+
+- The current frontend reads/writes the configured Studionet contract through `genlayer-js`, but a browser-wallet production walkthrough is still pending.
+- Production frontend deployment is pending.
+- No real security-program adoption, mainnet deployment, or non-Studionet value claim is made.

@@ -301,7 +301,7 @@ function Explorer({ wallet, poolState }: { wallet: ReturnType<typeof useWallet>;
           <h1>Disclosure Dividend</h1>
           <p>
             Seal a vulnerability report before disclosure, then let GenLayer validators divide a funded reward across material,
-            non-duplicative research contributions.
+            role-backed research contributions.
           </p>
           <button className="secondary-cta" type="button" onClick={() => goto("/create")}>
             <FileKey2 size={18} aria-hidden="true" />
@@ -418,7 +418,7 @@ function PoolWorkspace({
               ["Sealed Reports", "Commitments are open and reports remain private.", "COMMIT_OPEN"],
               ["Disclosure Verification", "A GHSA and patch commit must be verified before reveals.", "SOURCE_PENDING"],
               ["Reveals", "Claim owners publish commit-pinned reports and prove preimage.", "REVEAL_OPEN"],
-              ["Independent Review", "Validators classify contribution roles and semantic overlap.", "READY_FOR_REVIEW"],
+              ["Independent Review", "Validators classify locked contribution roles from public report evidence.", "READY_FOR_REVIEW"],
               ["Reward Split", "Canonical credits open after the finalized verdict.", "DISTRIBUTED"],
               ["Withdrawals", "Credit owners withdraw available GEN.", "DISTRIBUTED"],
             ].map(([title, body, status]) => (
@@ -711,7 +711,7 @@ function CreatePool({ wallet, onCreated }: { wallet: ReturnType<typeof useWallet
             <h2>Policy Summary</h2>
             <p>
               This pool rewards public, commit-pinned reports for <strong>{form.targetPackage}</strong>. Role weights total 100%, and
-              validators determine material roles plus semantic overlap before credits open.
+              validators determine material roles from public evidence before credits open.
             </p>
             <dl>
               <div><dt>Reward</dt><dd>{form.rewardWei} wei</dd></div>
