@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Clock3,
@@ -220,6 +220,11 @@ function useWallet() {
     setError("");
   }, []);
 
+  const closeMenus = useCallback(() => {
+    setPickerOpen(false);
+    setAccountMenuOpen(false);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     async function restore() {
@@ -257,6 +262,7 @@ function useWallet() {
     walletName,
     wallets,
     connect,
+    closeMenus,
     logout,
     openPicker,
     setPickerOpen,
@@ -309,6 +315,29 @@ function Header({
   wallet: ReturnType<typeof useWallet>;
 }) {
   const account = wallet.account;
+  const { accountMenuOpen, closeMenus, pickerOpen } = wallet;
+  const walletAreaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!pickerOpen && !accountMenuOpen) return;
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && walletAreaRef.current?.contains(target)) return;
+      closeMenus();
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeMenus();
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [accountMenuOpen, closeMenus, pickerOpen]);
+
   return (
     <header className="topbar">
       <a className="brand" href="#/" aria-label="Disclosure Dividend home">
@@ -323,7 +352,7 @@ function Header({
           My Claims
         </a>
       </nav>
-      <div className="wallet-area">
+      <div className="wallet-area" ref={walletAreaRef}>
         <button
           aria-expanded={account ? wallet.accountMenuOpen : wallet.pickerOpen}
           aria-haspopup="dialog"

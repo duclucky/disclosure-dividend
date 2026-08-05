@@ -15,6 +15,7 @@ vi.mock("genlayer-js", () => ({
 
 type TestProvider = {
   isMetaMask?: boolean;
+  isOkxWallet?: boolean;
   isRabby?: boolean;
   request: ReturnType<typeof vi.fn>;
 };
@@ -27,6 +28,30 @@ function provider(accounts: string[], balance = "0x2a", flags: Partial<TestProvi
     request: vi.fn(async ({ method }: { method: string }) => {
       if (method === "eth_requestAccounts" || method === "eth_accounts") return accounts;
       if (method === "eth_getBalance") return balance;
+      if (method === "eth_chainId") return "0xf22f";
+      return null;
+    }),
+  };
+}
+
+function chainSwitchingProvider(accounts: string[], initialChainId = "0x1", flags: Partial<TestProvider> = {}): TestProvider {
+  let chainId = initialChainId;
+  return {
+    ...flags,
+    request: vi.fn(async ({ method, params }: { method: string; params?: unknown[] }) => {
+      if (method === "eth_requestAccounts" || method === "eth_accounts") return accounts;
+      if (method === "eth_getBalance") return "0x2a";
+      if (method === "eth_chainId") return chainId;
+      if (method === "wallet_addEthereumChain") {
+        const [config] = params ?? [];
+        chainId = String((config as { chainId?: string } | undefined)?.chainId ?? chainId);
+        return null;
+      }
+      if (method === "wallet_switchEthereumChain") {
+        const [config] = params ?? [];
+        chainId = String((config as { chainId?: string } | undefined)?.chainId ?? chainId);
+        return null;
+      }
       return null;
     }),
   };
@@ -212,6 +237,53 @@ test("choosing OKX uses the provider object from the visible picker without redi
 
   await waitFor(() => expect(okx.request).toHaveBeenCalledWith({ method: "eth_requestAccounts" }));
   expect(phantom.request).not.toHaveBeenCalledWith({ method: "eth_requestAccounts" });
+  expect(await screen.findByRole("button", { name: /0x5555...5555/i })).toBeInTheDocument();
+});
+
+test("wallet picker closes when the user clicks outside it", async () => {
+  const metamask = provider(["0x1111111111111111111111111111111111111111"], "0x10", { isMetaMask: true });
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: { providers: [metamask], request: vi.fn() },
+  });
+
+  render(<App />);
+  await userEvent.click(screen.getByRole("button", { name: /Connect Wallet/i }));
+
+  expect(await screen.findByRole("dialog", { name: /Choose wallet/i })).toBeInTheDocument();
+  await userEvent.click(document.body);
+
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: /Choose wallet/i })).not.toBeInTheDocument());
+});
+
+test("connect wallet switches the selected provider to Studionet before marking it connected", async () => {
+  const phantom = chainSwitchingProvider(["0x9999999999999999999999999999999999999999"], "0x1");
+  const okx = chainSwitchingProvider(["0x5555555555555555555555555555555555555555"], "0x1", { isOkxWallet: true });
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: phantom,
+  });
+  Object.defineProperty(window, "okxwallet", {
+    configurable: true,
+    value: okx,
+  });
+
+  render(<App />);
+  await userEvent.click(screen.getByRole("button", { name: /Connect Wallet/i }));
+  await userEvent.click(await screen.findByRole("button", { name: /OKX Wallet/i }));
+
+  await waitFor(() => expect(okx.request).toHaveBeenCalledWith({ method: "eth_chainId" }));
+  expect(okx.request).toHaveBeenCalledWith({
+    method: "wallet_addEthereumChain",
+    params: [
+      expect.objectContaining({
+        chainId: "0xf22f",
+        chainName: "Genlayer Studio Network",
+      }),
+    ],
+  });
+  expect(okx.request).toHaveBeenCalledWith({ method: "wallet_switchEthereumChain", params: [{ chainId: "0xf22f" }] });
+  expect(phantom.request).not.toHaveBeenCalled();
   expect(await screen.findByRole("button", { name: /0x5555...5555/i })).toBeInTheDocument();
 });
 

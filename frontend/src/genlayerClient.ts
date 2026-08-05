@@ -88,6 +88,14 @@ declare global {
 export const configuredContractAddress = (import.meta.env.VITE_CONTRACT_ADDRESS as string | undefined)?.trim();
 const contractAddress = configuredContractAddress as `0x${string}` | undefined;
 const readClient = createClient({ chain: studionet });
+const studionetChainId = `0x${studionet.id.toString(16)}`;
+const studionetWalletChain = {
+  chainId: studionetChainId,
+  chainName: studionet.name,
+  rpcUrls: studionet.rpcUrls.default.http,
+  nativeCurrency: studionet.nativeCurrency,
+  blockExplorerUrls: studionet.blockExplorers?.default?.url ? [studionet.blockExplorers.default.url] : undefined,
+};
 const walletStorageKeys = {
   account: "disclosureDividend.walletAccount",
   walletId: "disclosureDividend.walletId",
@@ -143,17 +151,20 @@ function pushWallet(
   options: WalletOption[],
   seenProviders: Set<WalletProvider>,
   seenIds: Set<string>,
+  seenNames: Set<string>,
   provider: WalletProvider | undefined,
   detail?: Eip6963ProviderDetail,
 ) {
   if (!provider?.request || seenProviders.has(provider)) return;
   const identity = walletIdentity(provider, detail);
   const id = identity.id || "browser-wallet";
-  if (seenIds.has(id)) {
+  const nameKey = identity.name.trim().toLowerCase();
+  if (seenIds.has(id) || seenNames.has(nameKey)) {
     return;
   }
   seenProviders.add(provider);
   seenIds.add(id);
+  seenNames.add(nameKey);
   options.push({ id, name: identity.name, provider, icon: identity.icon });
 }
 
@@ -186,6 +197,43 @@ async function requestEip6963Providers(delayMs: number) {
 
 function parseAccounts(accounts: unknown): string[] {
   return Array.isArray(accounts) ? accounts.map((account) => String(account)).filter(Boolean) : [];
+}
+
+function normalizeChainId(chainId: unknown) {
+  return typeof chainId === "string" ? chainId.toLowerCase() : "";
+}
+
+function walletErrorMessage(err: unknown) {
+  return err instanceof Error ? err.message : typeof err === "string" ? err : "";
+}
+
+async function ensureWalletOnStudionet(provider: WalletProvider) {
+  try {
+    const currentChainId = normalizeChainId(await provider.request({ method: "eth_chainId" }));
+    if (currentChainId === studionetChainId) return;
+  } catch {
+    // Some injected wallets only expose chain state after a switch request.
+  }
+
+  try {
+    await provider.request({ method: "wallet_addEthereumChain", params: [studionetWalletChain] });
+    await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: studionetChainId }] });
+  } catch (err) {
+    const detail = walletErrorMessage(err);
+    throw new Error(
+      detail
+        ? `Wallet is not connected to GenLayer Studionet. Approve the network switch in your wallet. (${detail})`
+        : "Wallet is not connected to GenLayer Studionet. Approve the network switch in your wallet.",
+    );
+  }
+}
+
+async function ensureActiveWalletOnStudionet() {
+  const provider = activeWalletProvider;
+  if (!provider) {
+    throw new Error("Wallet provider is not available");
+  }
+  await ensureWalletOnStudionet(provider);
 }
 
 function saveWalletSession(session: WalletSession) {
@@ -236,19 +284,22 @@ export async function discoverWallets(optionsInput: { eip6963DelayMs?: number } 
   const options: WalletOption[] = [];
   const seenProviders = new Set<WalletProvider>();
   const seenIds = new Set<string>();
+  const seenNames = new Set<string>();
   const delayMs = optionsInput.eip6963DelayMs ?? 0;
 
   await requestEip6963Providers(delayMs);
-  announcedProviders.forEach((detail) => pushWallet(options, seenProviders, seenIds, detail.provider, detail));
+  announcedProviders.forEach((detail) => pushWallet(options, seenProviders, seenIds, seenNames, detail.provider, detail));
 
-  pushWallet(options, seenProviders, seenIds, window.okxwallet?.ethereum ?? window.okxwallet, {
+  pushWallet(options, seenProviders, seenIds, seenNames, window.okxwallet?.ethereum ?? window.okxwallet, {
     info: { name: "OKX Wallet", rdns: "com.okx.wallet" },
   });
 
   const injected = window.ethereum;
   const legacyProviders = Array.isArray(injected?.providers) ? injected.providers : [];
-  legacyProviders.forEach((provider) => pushWallet(options, seenProviders, seenIds, provider));
-  pushWallet(options, seenProviders, seenIds, injected);
+  legacyProviders.forEach((provider) => pushWallet(options, seenProviders, seenIds, seenNames, provider));
+  if (legacyProviders.length === 0) {
+    pushWallet(options, seenProviders, seenIds, seenNames, injected);
+  }
 
   return options;
 }
@@ -273,9 +324,9 @@ export async function connectWallet(walletOrId?: string | WalletOption): Promise
     throw new Error("Wallet did not return an account");
   }
   activeWalletProvider = selected.provider;
+  await ensureWalletOnStudionet(selected.provider);
   const session = { account: firstAccount, walletId: selected.id, walletName: selected.name };
   saveWalletSession(session);
-  await writeClient(firstAccount).connect("studionet");
   return session;
 }
 
@@ -394,6 +445,7 @@ export async function createPool(
     rewardWei: string;
   },
 ) {
+  await ensureActiveWalletOnStudionet();
   const hash = (await writeClient(account).writeContract({
     address: requireContractAddress(),
     functionName: "create_pool",
@@ -413,6 +465,7 @@ export async function createPool(
 }
 
 export async function sealClaim(account: string, poolId: string, commitment: string, reservationBondWei: string) {
+  await ensureActiveWalletOnStudionet();
   const hash = (await writeClient(account).writeContract({
     address: requireContractAddress(),
     functionName: "commit_claim",
@@ -423,6 +476,7 @@ export async function sealClaim(account: string, poolId: string, commitment: str
 }
 
 export async function revealClaim(account: string, poolId: string, reportUrl: string, salt: string) {
+  await ensureActiveWalletOnStudionet();
   const hash = (await writeClient(account).writeContract({
     address: requireContractAddress(),
     functionName: "reveal_claim",
@@ -433,6 +487,7 @@ export async function revealClaim(account: string, poolId: string, reportUrl: st
 }
 
 export async function withdrawCredit(account: string, amountWei: string) {
+  await ensureActiveWalletOnStudionet();
   const hash = (await writeClient(account).writeContract({
     address: requireContractAddress(),
     functionName: "withdraw_credit",
