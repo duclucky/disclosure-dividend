@@ -154,21 +154,12 @@ function useWallet() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const refreshWallets = useCallback(async () => {
-    const detected = await discoverWallets();
-    setWallets(detected);
-    return detected;
-  }, []);
-
   const openPicker = useCallback(async () => {
     setBusy(true);
     setError("");
     try {
-      let detected = await refreshWallets();
-      if (detected.length === 0) {
-        detected = await discoverWallets({ eip6963DelayMs: 120 });
-        setWallets(detected);
-      }
+      const detected = await discoverWallets({ eip6963DelayMs: 120 });
+      setWallets(detected);
       if (detected.length === 0) {
         setError("No browser wallet was detected");
         setPickerOpen(false);
@@ -181,7 +172,7 @@ function useWallet() {
     } finally {
       setBusy(false);
     }
-  }, [refreshWallets]);
+  }, []);
 
   const connect = useCallback(async (walletId: string) => {
     setBusy(true);

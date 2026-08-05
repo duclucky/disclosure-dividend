@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, test, vi } from "vitest";
 import App from "./App";
@@ -124,12 +124,50 @@ test("connect wallet opens a provider picker and connects the chosen extension",
   render(<App />);
   await userEvent.click(screen.getByRole("button", { name: /Connect Wallet/i }));
 
-  const dialog = screen.getByRole("dialog", { name: /Choose wallet/i });
+  const dialog = await screen.findByRole("dialog", { name: /Choose wallet/i });
   expect(within(dialog).getByRole("button", { name: /MetaMask/i })).toBeInTheDocument();
   await userEvent.click(within(dialog).getByRole("button", { name: /Rabby/i }));
 
-  expect(rabby.request).toHaveBeenCalledWith({ method: "eth_requestAccounts" });
-  expect(screen.getByRole("button", { name: /0x2222...2222/i })).toBeInTheDocument();
+  await waitFor(() => expect(rabby.request).toHaveBeenCalledWith({ method: "eth_requestAccounts" }));
+  expect(await screen.findByRole("button", { name: /0x2222...2222/i })).toBeInTheDocument();
+});
+
+test("wallet picker prefers announced providers over a legacy provider hijacked by another wallet", async () => {
+  const phantom = provider(["0x9999999999999999999999999999999999999999"], "0x90");
+  const metamask = provider(["0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"], "0xa0", { isMetaMask: true });
+  const rabby = provider(["0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"], "0xb0", { isRabby: true });
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: phantom,
+  });
+  window.addEventListener("eip6963:requestProvider", () => {
+    window.setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent("eip6963:announceProvider", {
+          detail: {
+            info: { name: "MetaMask", rdns: "io.metamask" },
+            provider: metamask,
+          },
+        }),
+      );
+      window.dispatchEvent(
+        new CustomEvent("eip6963:announceProvider", {
+          detail: {
+            info: { name: "Rabby", rdns: "io.rabby" },
+            provider: rabby,
+          },
+        }),
+      );
+    }, 0);
+  });
+
+  render(<App />);
+  await userEvent.click(screen.getByRole("button", { name: /Connect Wallet/i }));
+  await userEvent.click(await screen.findByRole("button", { name: /MetaMask/i }));
+
+  await waitFor(() => expect(metamask.request).toHaveBeenCalledWith({ method: "eth_requestAccounts" }));
+  expect(phantom.request).not.toHaveBeenCalledWith({ method: "eth_requestAccounts" });
+  expect(await screen.findByRole("button", { name: /0xaaaa...aaaa/i })).toBeInTheDocument();
 });
 
 test("wallet session is restored after reload when the selected provider still exposes accounts", async () => {
@@ -156,7 +194,7 @@ test("connected wallet dropdown shows native balance and supports logout", async
 
   render(<App />);
   await userEvent.click(screen.getByRole("button", { name: /Connect Wallet/i }));
-  await userEvent.click(screen.getByRole("button", { name: /MetaMask/i }));
+  await userEvent.click(await screen.findByRole("button", { name: /MetaMask/i }));
   await userEvent.click(screen.getByRole("button", { name: /0x4444...4444/i }));
 
   const menu = screen.getByRole("dialog", { name: /Wallet account/i });

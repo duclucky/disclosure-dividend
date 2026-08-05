@@ -56,6 +56,7 @@ export type WalletProvider = {
   isBraveWallet?: boolean;
   isCoinbaseWallet?: boolean;
   isMetaMask?: boolean;
+  isPhantom?: boolean;
   isRabby?: boolean;
   isTrust?: boolean;
   isTrustWallet?: boolean;
@@ -124,6 +125,7 @@ function walletIdentity(provider: WalletProvider, detail?: Eip6963ProviderDetail
   }
   if (provider.isRabby) return { id: "rabby", name: "Rabby" };
   if (provider.isCoinbaseWallet) return { id: "coinbase-wallet", name: "Coinbase Wallet" };
+  if (provider.isPhantom) return { id: "phantom", name: "Phantom" };
   if (provider.isTrust || provider.isTrustWallet) return { id: "trust-wallet", name: "Trust Wallet" };
   if (provider.isBraveWallet) return { id: "brave-wallet", name: "Brave Wallet" };
   if (provider.isWalletConnect) return { id: "walletconnect", name: "WalletConnect" };
@@ -255,7 +257,10 @@ export async function restoreWalletSession(): Promise<WalletSession | null> {
   const storedAccount = storage?.getItem(walletStorageKeys.account);
   if (!storedWalletId || !storedAccount) return null;
 
-  const selected = (await discoverWallets()).find((wallet) => wallet.id === storedWalletId);
+  let selected = (await discoverWallets()).find((wallet) => wallet.id === storedWalletId);
+  if (!selected) {
+    selected = (await discoverWallets({ eip6963DelayMs: 120 })).find((wallet) => wallet.id === storedWalletId);
+  }
   if (!selected) return null;
 
   const accounts = parseAccounts(await selected.provider.request({ method: "eth_accounts" }));
@@ -276,7 +281,9 @@ export async function getWalletBalance(account: string): Promise<string> {
   let provider = activeWalletProvider;
   if (!provider) {
     const storedWalletId = walletStorage()?.getItem(walletStorageKeys.walletId);
-    provider = (await discoverWallets()).find((wallet) => wallet.id === storedWalletId)?.provider;
+    provider =
+      (await discoverWallets()).find((wallet) => wallet.id === storedWalletId)?.provider ??
+      (await discoverWallets({ eip6963DelayMs: 120 })).find((wallet) => wallet.id === storedWalletId)?.provider;
   }
   if (!provider) {
     throw new Error("Connected wallet provider is not available");
