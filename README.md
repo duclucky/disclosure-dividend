@@ -9,9 +9,12 @@ Status: **Studionet lifecycle complete; Vercel frontend deployed**.
 - Repository: `https://github.com/duclucky/disclosure-dividend`
 - Studionet contract: `0x484f2a86CAFa7E43894d78F846ad132df8Dc6F5A`
 - Contract Explorer: `https://explorer-studio.genlayer.com/tx/0x248225cd3616bd352acdacf0018cb09c7faf7240f82edb3d7b1699bc1d03fe7d`
-- Source commit: `94a4597cf37d5c8dbb002b52fd7fbcd54afed45a`
+- Contract Address Explorer: `https://explorer-studio.genlayer.com/address/0x484f2a86CAFa7E43894d78F846ad132df8Dc6F5A`
+- Contract deployment source commit: `94a4597cf37d5c8dbb002b52fd7fbcd54afed45a`
+- Verified frontend/submission-base commit: `17b390199d86363cac709f5e8589a849c936e13e`
 - Lifecycle evidence: `docs/evidence/studionet/deployment.json`
-- CI: `https://github.com/duclucky/disclosure-dividend/actions/runs/30980558503`
+- Submission packet: `docs/SUBMISSION.md`
+- CI: `https://github.com/duclucky/disclosure-dividend/actions/runs/31012926269`
 - Frontend production URL: `https://disclosure-dividend.vercel.app`
 - Final demo state: `FINALIZED_LIFECYCLE`
 - Final pool: `node-tmp-msfnpd9s`, status `DISTRIBUTED`
@@ -44,9 +47,9 @@ Latest local verification:
 npm run check
 ```
 
-Result: GenVM lint/schema check passed, 13 direct/static contract tests passed, 3 deployment parser tests passed, frontend TypeScript passed, 6 frontend tests passed, and production frontend build completed. Vite reports a non-blocking bundle-size warning.
+Result: GenVM lint/schema check passed, 13 direct/static contract tests passed, 3 deployment parser tests passed, frontend TypeScript passed, 30 frontend tests passed, and production frontend build completed. Vite reports a non-blocking bundle-size warning.
 
 ## Honest limits
 
-- The current frontend reads/writes the configured Studionet contract through `genlayer-js`, but a browser-wallet production walkthrough is still pending.
+- The current frontend reads/writes the configured Studionet contract through `genlayer-js`, but the canonical full lifecycle evidence is script-signed; a full production browser-wallet lifecycle through final distribution is still not claimed.
 - No real security-program adoption, mainnet deployment, or non-Studionet value claim is made.

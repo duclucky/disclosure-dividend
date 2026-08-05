@@ -46,7 +46,7 @@ Disclosure Dividend lets a sponsor fund an OSS security reward before disclosure
 | Differentiation | `PASS` | Sealed pre-disclosure commitments plus validator-controlled role-bucket payouts differ from covenant/quarantine, escrow, market settlement, and procurement-winner patterns. |
 | Claim-to-code | `PASS` | Matrix below maps each claim to methods, reads, tests, and current Studionet evidence where produced. |
 | Full lifecycle | `PASS` | Studionet lifecycle evidence covers create/fund, commit, source verification, reveal, review, credit withdrawal, and canonical reads in `docs/evidence/studionet/deployment.json`. |
-| Scope honesty | `PASS` | Contract, tests, Studionet deployment, lifecycle, CI, and Vercel frontend deployment are verified. Browser-wallet production walkthrough remains pending until produced. |
+| Scope honesty | `PASS` | Contract, tests, Studionet deployment, lifecycle, CI, and Vercel frontend deployment are verified. Full production browser-wallet lifecycle through final distribution remains pending until produced. |
 
 ## Actors, roles and incentives
 
@@ -397,7 +397,7 @@ The contract may store short human-readable reason text for a final attempt, but
 - Canonical reads: pool, claims, attempt, credit, contract summary after each finalized step.
 - Balance/receipt proof: safe allowlisted tx hashes, statuses, finality, public addresses, and before/after balances for withdrawal.
 - Evidence path: `docs/evidence/studionet/deployment.json`.
-- CI evidence: `https://github.com/duclucky/disclosure-dividend/actions/runs/30980558503`.
+- CI evidence: `https://github.com/duclucky/disclosure-dividend/actions/runs/31012926269`.
 - Frontend Vercel URL: `https://disclosure-dividend.vercel.app`.
 - Resume/idempotency: one active `deployment.json`; superseded revisions archived with reason and recovery evidence. The earliest diagnostic revision predates bond-refund recovery, so only sponsor reward recovery is claimed for that revision.
 
@@ -415,18 +415,19 @@ The contract may store short human-readable reason text for a final attempt, but
 
 ### Projects
 
-- [ ] Real browser-wallet walkthrough.
+- [ ] Full production browser-wallet lifecycle through final distribution.
 - [x] Full script-signed lifecycle/failure/retry.
 - [x] Canonical reads.
 - [x] Meaningful user outcome.
-- [ ] Production browser evidence.
+- [x] Production Vercel deployment and HTTP/bundle verification.
 - [x] Primary UI contains only user-relevant data/actions; system/reviewer details are contextual or hidden.
 
 ## Honest limitations
 
-- Frontend Phase 3B baseline is buildable and uses clearly labeled design data only when no contract address is configured.
-- Contract source, direct tests, `npm run check`, public GitHub, Studionet deployment, and script-signed lifecycle are complete.
-- Browser-wallet writes and final Portal submission remain pending until their phases produce evidence.
+- The frontend uses clearly labeled design data only when no contract address is configured.
+- Contract source, direct tests, `npm run check`, public GitHub, Studionet deployment, successful CI, Vercel deployment, and script-signed lifecycle are complete.
+- Browser-wallet integration is implemented and tested, but a full production browser-wallet lifecycle through final distribution is not claimed.
+- Final Portal submission remains pending until submitted through an authenticated Portal session.
 - No legal/security-program adoption or non-Studionet deployment is claimed.
 
 ## Kill criteria
