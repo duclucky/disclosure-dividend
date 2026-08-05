@@ -38,6 +38,7 @@ type Route =
 
 type UiPool = {
   id: string;
+  sponsor: string;
   repository: string;
   packageName: string;
   issue: string;
@@ -58,9 +59,33 @@ const poolFilters: Array<{ label: string; value: PoolFilter }> = [
   { label: "Reward split finalized", value: "DISTRIBUTED" },
 ];
 
+const standardRewardPolicy = [
+  {
+    label: "Discovery evidence",
+    weight: "20%",
+    description: "Finding and documenting the issue before public disclosure.",
+  },
+  {
+    label: "Root-cause analysis",
+    weight: "30%",
+    description: "Explaining why the vulnerability exists and where it lives.",
+  },
+  {
+    label: "Exploit proof",
+    weight: "40%",
+    description: "Showing credible, bounded evidence that the issue is real.",
+  },
+  {
+    label: "Fix verification",
+    weight: "10%",
+    description: "Confirming the patch or mitigation addresses the issue.",
+  },
+];
+
 const designPools: UiPool[] = [
   {
     id: "node-tmp",
+    sponsor: "",
     repository: "raszi/node-tmp",
     packageName: "npm:tmp",
     issue: "Path traversal vulnerability",
@@ -73,6 +98,7 @@ const designPools: UiPool[] = [
   },
   {
     id: "express-rate-limit",
+    sponsor: "",
     repository: "express-rate-limit/express-rate-limit",
     packageName: "npm:express-rate-limit",
     issue: "Bypass via X-Forwarded-For",
@@ -85,6 +111,7 @@ const designPools: UiPool[] = [
   },
   {
     id: "core-js",
+    sponsor: "",
     repository: "zloirock/core-js",
     packageName: "npm:core-js",
     issue: "Prototype pollution",
@@ -97,6 +124,7 @@ const designPools: UiPool[] = [
   },
   {
     id: "nginx-ingress",
+    sponsor: "",
     repository: "kubernetes/ingress-nginx",
     packageName: "container:ingress-nginx",
     issue: "Config injection",
@@ -167,6 +195,7 @@ function parseGenInputToWei(value: string): bigint | null {
 function poolFromContract(pool: PoolView): UiPool {
   return {
     id: pool.pool_id,
+    sponsor: pool.sponsor,
     repository: pool.target_repository.replace(/^https:\/\/github\.com\//, ""),
     packageName: pool.target_package,
     issue: pool.ghsa_id ? `${pool.ghsa_id} disclosure` : "Disclosure source pending",
@@ -783,7 +812,7 @@ function PoolWorkspace({
   );
 }
 
-function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
+function Account({ wallet, poolState }: { wallet: ReturnType<typeof useWallet>; poolState: ReturnType<typeof usePools> }) {
   const [accountView, setAccountView] = useState<AccountView | null>(null);
   const [amountGen, setAmountGen] = useState("");
   const [status, setStatus] = useState("");
@@ -824,6 +853,10 @@ function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
   const liveClaims = accountView?.claims ?? [];
   const hasLiveAccount = Boolean(configuredContractAddress && wallet.account && accountView);
   const showDesignAccount = !configuredContractAddress;
+  const connectedAccount = wallet.account.toLowerCase();
+  const createdPools = connectedAccount
+    ? poolState.pools.filter((pool) => pool.sponsor.toLowerCase() === connectedAccount)
+    : [];
   const creditWei = parseWeiInput(accountView?.creditWei ?? "0") ?? 0n;
   const requestedWithdrawWei = amountGen.trim() ? parseGenInputToWei(amountGen) : creditWei;
   const canWithdraw = Boolean(
@@ -842,63 +875,114 @@ function Account({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
       <main className="page with-sidebar account">
         <p className="eyebrow">Connected account</p>
         <h1>My Claims & Credits</h1>
-        <p className="intro">Track your sealed reports, reveal windows, refundable bonds, reward credits, and withdrawals.</p>
+        <p className="intro">Track your created reward pools, sealed reports, refundable bonds, reward credits, and withdrawals.</p>
         <IntegrationNotice loading={busy && !accountView} error={wallet.error || status} live={hasLiveAccount} />
         <div className="account-grid">
-          <section aria-label="Active claims">
-            <div className="section-title">
-              <h2>Active Claims</h2>
-              <span>{hasLiveAccount ? `${liveClaims.length} linked` : showDesignAccount ? "2 pending" : "Canonical view"}</span>
-            </div>
-            {hasLiveAccount ? (
-              liveClaims.map((claim) => (
-                <article className="claim-card glass highlighted" key={`${claim.pool_id}-${claim.commitment}`}>
-                  <div>
-                    <h3>{claim.pool_id} report</h3>
-                    <p>{claim.report_url || "Report remains sealed until reveal."}</p>
-                  </div>
-                  <dl>
-                    <div><dt>Bond credit</dt><dd>{formatWeiAsGen(claim.bond_wei)}</dd></div>
-                    <div><dt>Status</dt><dd>{claim.outcome}</dd></div>
-                    <div><dt>Pool</dt><dd>{claim.pool_id}</dd></div>
-                  </dl>
-                </article>
-              ))
-            ) : showDesignAccount ? (
-              <>
+          <div className="account-main-column">
+            <section aria-label="Created pools">
+              <div className="section-title">
+                <h2>Pools I Created</h2>
+                <span>{wallet.account ? `${createdPools.length} linked` : "Connect wallet"}</span>
+              </div>
+              {wallet.account ? (
+                createdPools.length > 0 ? (
+                  createdPools.map((pool) => (
+                    <article className="claim-card glass highlighted" key={`created-${pool.id}`}>
+                      <div>
+                        <h3>{pool.id}</h3>
+                        <p>{pool.issue}</p>
+                      </div>
+                      <dl>
+                        <div><dt>Reward</dt><dd>{pool.reward}</dd></div>
+                        <div><dt>Status</dt><dd>{statusLabels[pool.status]}</dd></div>
+                        <div><dt>Claims</dt><dd>{pool.claims}</dd></div>
+                      </dl>
+                      <a className="secondary-cta" href={`#/pools/${pool.id}`} aria-label={`View Details for ${pool.id}`}>
+                        View Details <ArrowRight size={18} aria-hidden="true" />
+                      </a>
+                    </article>
+                  ))
+                ) : (
+                  <article className="claim-card glass">
+                    <div>
+                      <h3>No created pools</h3>
+                      <p>Pools you create with this wallet will appear here after the contract view refreshes.</p>
+                    </div>
+                  </article>
+                )
+              ) : (
                 <article className="claim-card glass highlighted">
                   <div>
-                    <h3>node-tmp report</h3>
-                    <p>Path traversal report committed before disclosure</p>
+                    <h3>Connect wallet</h3>
+                    <p>Connect a browser wallet to see pools created by that account.</p>
                   </div>
-                  <dl>
-                    <div><dt>Bond credit</dt><dd>25 GEN</dd></div>
-                    <div><dt>Status</dt><dd>Reveal eligible soon</dd></div>
-                    <div><dt>Pool</dt><dd>node-tmp</dd></div>
-                  </dl>
-                  <button className="secondary-cta" type="button">Reveal Report</button>
                 </article>
-                <article className="claim-card glass">
+              )}
+            </section>
+            <section aria-label="Active claims">
+              <div className="section-title">
+                <h2>Active Claims</h2>
+                <span>{hasLiveAccount ? `${liveClaims.length} linked` : showDesignAccount ? "2 pending" : "Canonical view"}</span>
+              </div>
+              {hasLiveAccount ? (
+                liveClaims.length > 0 ? (
+                  liveClaims.map((claim) => (
+                    <article className="claim-card glass highlighted" key={`${claim.pool_id}-${claim.commitment}`}>
+                      <div>
+                        <h3>{claim.pool_id} report</h3>
+                        <p>{claim.report_url || "Report remains sealed until reveal."}</p>
+                      </div>
+                      <dl>
+                        <div><dt>Bond credit</dt><dd>{formatWeiAsGen(claim.bond_wei)}</dd></div>
+                        <div><dt>Status</dt><dd>{claim.outcome}</dd></div>
+                        <div><dt>Pool</dt><dd>{claim.pool_id}</dd></div>
+                      </dl>
+                    </article>
+                  ))
+                ) : (
+                  <article className="claim-card glass">
+                    <div>
+                      <h3>No linked claims</h3>
+                      <p>This account has no claims in the canonical contract view.</p>
+                    </div>
+                  </article>
+                )
+              ) : showDesignAccount ? (
+                <>
+                  <article className="claim-card glass highlighted">
+                    <div>
+                      <h3>node-tmp report</h3>
+                      <p>Path traversal report committed before disclosure</p>
+                    </div>
+                    <dl>
+                      <div><dt>Bond credit</dt><dd>25 GEN</dd></div>
+                      <div><dt>Status</dt><dd>Reveal eligible soon</dd></div>
+                      <div><dt>Pool</dt><dd>node-tmp</dd></div>
+                    </dl>
+                    <button className="secondary-cta" type="button">Reveal Report</button>
+                  </article>
+                  <article className="claim-card glass">
+                    <div>
+                      <h3>core-js report</h3>
+                      <p>Root-cause contribution accepted in finalized split</p>
+                    </div>
+                    <dl>
+                      <div><dt>Reward credit</dt><dd>4,450 GEN</dd></div>
+                      <div><dt>Status</dt><dd>Credit available</dd></div>
+                      <div><dt>Outcome</dt><dd>Material contribution</dd></div>
+                    </dl>
+                  </article>
+                </>
+              ) : (
+                <article className="claim-card glass highlighted">
                   <div>
-                    <h3>core-js report</h3>
-                    <p>Root-cause contribution accepted in finalized split</p>
+                    <h3>{wallet.account ? "No linked claims" : "Connect wallet"}</h3>
+                    <p>{wallet.account ? "This account has no claims in the canonical contract view." : "Connect a browser wallet to read your canonical claim history."}</p>
                   </div>
-                  <dl>
-                    <div><dt>Reward credit</dt><dd>4,450 GEN</dd></div>
-                    <div><dt>Status</dt><dd>Credit available</dd></div>
-                    <div><dt>Outcome</dt><dd>Material contribution</dd></div>
-                  </dl>
                 </article>
-              </>
-            ) : (
-              <article className="claim-card glass highlighted">
-                <div>
-                  <h3>{wallet.account ? "No linked claims" : "Connect wallet"}</h3>
-                  <p>{wallet.account ? "This account has no claims in the canonical contract view." : "Connect a browser wallet to read your canonical claim history."}</p>
-                </div>
-              </article>
-            )}
-          </section>
+              )}
+            </section>
+          </div>
           <aside className="credit-card glass">
             <h2>Credit Summary</h2>
             <p>Total available balance</p>
@@ -985,7 +1069,7 @@ function CreatePool({ wallet, onCreated }: { wallet: ReturnType<typeof useWallet
       <main className="page with-sidebar create-page">
         <p className="eyebrow">Sponsor workflow</p>
         <h1>Create Pool Policy</h1>
-        <p className="intro">Lock the target, timing, claim capacity, role weights, and funded GEN reward before reports are visible.</p>
+        <p className="intro">Lock the target, timing, claim capacity, and funded GEN reward before reports are visible.</p>
         <div className="create-grid">
           <form id="createPoolForm" className="glass form-card" onSubmit={onSubmit}>
             <h2>Target Scope</h2>
@@ -1015,16 +1099,17 @@ function CreatePool({ wallet, onCreated }: { wallet: ReturnType<typeof useWallet
                 <input id="revealDeadline" type="datetime-local" value={form.revealDeadline} onChange={(event) => updateForm("revealDeadline", event.target.value)} />
               </label>
             </div>
-            <h2>Reward Role Weights</h2>
-            {[
-              ["DISCOVERY", "20%"],
-              ["ROOT_CAUSE", "30%"],
-              ["EXPLOIT_PROOF", "40%"],
-              ["REMEDIATION_VERIFICATION", "10%"],
-            ].map(([role, weight]) => (
-              <div className="weight-row" key={role}>
-                <span>{role}</span>
-                <strong>{weight}</strong>
+            <h2>Standard reward policy</h2>
+            <p className="policy-note">
+              The split is fixed for this pool type so contributors compete on evidence quality, not on sponsor-tuned payout rules.
+            </p>
+            {standardRewardPolicy.map((item) => (
+              <div className="weight-row" key={item.label}>
+                <span>
+                  {item.label}
+                  <small>{item.description}</small>
+                </span>
+                <strong>{item.weight}</strong>
               </div>
             ))}
             {status ? <p className="tx-status" role="status">{status}</p> : null}
@@ -1032,8 +1117,8 @@ function CreatePool({ wallet, onCreated }: { wallet: ReturnType<typeof useWallet
           <aside className="glass summary-card">
             <h2>Policy Summary</h2>
             <p>
-              This pool rewards public, commit-pinned reports for <strong>{form.targetPackage}</strong>. Role weights total 100%, and
-              validators determine material roles from public evidence before credits open.
+              This pool rewards public, commit-pinned reports for <strong>{form.targetPackage}</strong>. The standard policy totals
+              100%, and validators determine material contribution categories from public evidence before credits open.
             </p>
             <dl>
               <div><dt>Reward</dt><dd>{parseGenInputToWei(form.rewardGen) === null ? "Invalid GEN amount" : formatWeiAsGen(parseGenInputToWei(form.rewardGen) ?? 0n)}</dd></div>
@@ -1066,7 +1151,7 @@ export default function App() {
   const wallet = useWallet();
   const poolState = usePools();
   if (route.name === "pool") return <PoolWorkspace poolId={route.poolId} wallet={wallet} poolState={poolState} />;
-  if (route.name === "account") return <Account wallet={wallet} />;
+  if (route.name === "account") return <Account wallet={wallet} poolState={poolState} />;
   if (route.name === "create") return <CreatePool wallet={wallet} onCreated={poolState.refresh} />;
   return <Explorer wallet={wallet} poolState={poolState} />;
 }

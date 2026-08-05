@@ -390,10 +390,47 @@ test("create pool keeps policy editor layout with real v1 fields", async () => {
   expect(screen.getByLabelText(/Commit deadline/i)).toBeInTheDocument();
   expect(screen.getByLabelText(/Reveal deadline/i)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Create and Fund Pool/i })).toBeInTheDocument();
+  expect(screen.getByText(/Standard reward policy/i)).toBeInTheDocument();
+  expect(screen.getByText(/Discovery evidence/i)).toBeInTheDocument();
+  expect(screen.queryByText(/Reward Role Weights/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/ROOT_CAUSE/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/EXPLOIT_PROOF/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/REMEDIATION_VERIFICATION/i)).not.toBeInTheDocument();
   expect(screen.getByText("2 GEN")).toBeInTheDocument();
   expect(screen.getByText("1 GEN")).toBeInTheDocument();
   expect(screen.queryByText(/APY/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/multi-sig/i)).not.toBeInTheDocument();
+});
+
+test("account screen shows pools created by the connected sponsor from canonical pool views", async () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+  const sponsor = "0x7777777777777777777777777777777777777777";
+  genlayerMocks.readContract.mockImplementation(async ({ functionName, args }) => {
+    if (functionName === "get_credit") return "0";
+    if (functionName === "get_account_pool_ids") return [];
+    if (functionName === "get_pool_ids") return ["mine-pool", "other-pool"];
+    if (functionName === "get_pool" && args?.[0] === "mine-pool") {
+      return { ...contractPool("COMMIT_OPEN", "mine-pool"), sponsor };
+    }
+    if (functionName === "get_pool" && args?.[0] === "other-pool") {
+      return { ...contractPool("DISTRIBUTED", "other-pool"), sponsor: "0x9999999999999999999999999999999999999999" };
+    }
+    return [];
+  });
+  const metamask = provider([sponsor], "0x70", { isMetaMask: true });
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: { providers: [metamask], request: vi.fn() },
+  });
+  localStorage.setItem("disclosureDividend.walletId", "metamask");
+  localStorage.setItem("disclosureDividend.walletAccount", sponsor);
+
+  window.location.hash = "#/account";
+  render(<App />);
+
+  expect(await screen.findByRole("heading", { name: /Pools I Created/i })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /View Details for mine-pool/i })).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: /View Details for other-pool/i })).not.toBeInTheDocument();
 });
 
 test("create pool amount is entered as GEN and submitted to the contract as wei", async () => {

@@ -579,6 +579,11 @@ input:focus-visible {
   align-items: start;
 }
 
+.account-main-column {
+  display: grid;
+  gap: 30px;
+}
+
 .lifecycle h2,
 .action-panel h2,
 .section-title h2,
@@ -611,6 +616,7 @@ input:focus-visible {
 
 .timeline-item p,
 .claim-card p,
+.policy-note,
 .summary-card p {
   margin-top: 6px;
   color: var(--muted);
@@ -736,9 +742,23 @@ dd {
 .weight-row {
   display: flex;
   justify-content: space-between;
+  gap: 20px;
   padding: 18px 0;
   border-top: 0.5px solid rgba(255, 255, 255, 0.08);
   font-family: "Geist Mono", ui-monospace, monospace;
+}
+
+.weight-row span {
+  display: grid;
+  gap: 6px;
+}
+
+.weight-row small {
+  max-width: 420px;
+  color: var(--muted);
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .weight-row strong {
