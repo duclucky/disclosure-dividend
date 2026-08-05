@@ -88,6 +88,7 @@ declare global {
 export const configuredContractAddress = (import.meta.env.VITE_CONTRACT_ADDRESS as string | undefined)?.trim();
 const contractAddress = configuredContractAddress as `0x${string}` | undefined;
 const readClient = createClient({ chain: studionet });
+const transientRpcRetryDelaysMs = [0, 400];
 const studionetChainId = `0x${studionet.id.toString(16)}`;
 const studionetWalletChain = {
   chainId: studionetChainId,
@@ -292,6 +293,51 @@ function requireContractAddress(): `0x${string}` {
   return contractAddress;
 }
 
+function rpcErrorMessage(err: unknown) {
+  const cause = typeof err === "object" && err && "cause" in err ? (err as { cause?: unknown }).cause : undefined;
+  if (err instanceof Error) {
+    return [err.message, cause instanceof Error ? cause.message : ""].filter(Boolean).join(" ");
+  }
+  return typeof err === "string" ? err : "";
+}
+
+function isTransientRpcError(err: unknown) {
+  const message = rpcErrorMessage(err).toLowerCase();
+  return (
+    message.includes("failed to fetch") ||
+    message.includes("networkerror") ||
+    message.includes("load failed") ||
+    message.includes("timeout") ||
+    message.includes("temporarily unavailable") ||
+    message.includes("too many requests") ||
+    message.includes("connection") ||
+    message.includes("502") ||
+    message.includes("503") ||
+    message.includes("504")
+  );
+}
+
+async function delay(ms: number) {
+  if (ms <= 0) return;
+  await new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function withTransientRpcRetry<T>(operation: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= transientRpcRetryDelaysMs.length; attempt += 1) {
+    try {
+      return await operation();
+    } catch (err) {
+      lastError = err;
+      if (!isTransientRpcError(err) || attempt === transientRpcRetryDelaysMs.length) {
+        throw err;
+      }
+      await delay(transientRpcRetryDelaysMs[attempt]);
+    }
+  }
+  throw lastError;
+}
+
 function writeClient(account: string) {
   const provider = activeWalletProvider ?? window.ethereum;
   if (!provider) {
@@ -305,14 +351,18 @@ function writeClient(account: string) {
 }
 
 async function waitForAcceptedAndFinalized(hash: TransactionHash) {
-  const accepted = await readClient.waitForTransactionReceipt({
-    hash,
-    status: TransactionStatus.ACCEPTED,
-  });
-  const finalized = await readClient.waitForTransactionReceipt({
-    hash,
-    status: TransactionStatus.FINALIZED,
-  });
+  const accepted = await withTransientRpcRetry(() =>
+    readClient.waitForTransactionReceipt({
+      hash,
+      status: TransactionStatus.ACCEPTED,
+    }),
+  );
+  const finalized = await withTransientRpcRetry(() =>
+    readClient.waitForTransactionReceipt({
+      hash,
+      status: TransactionStatus.FINALIZED,
+    }),
+  );
   return { hash, accepted, finalized };
 }
 
@@ -418,51 +468,67 @@ export function disconnectWalletSession() {
 
 export async function fetchPools(): Promise<PoolView[]> {
   const address = requireContractAddress();
-  const ids = (await readClient.readContract({
-    address,
-    functionName: "get_pool_ids",
-    args: [],
-  })) as string[];
+  const ids = (await withTransientRpcRetry(() =>
+    readClient.readContract({
+      address,
+      functionName: "get_pool_ids",
+      args: [],
+    }),
+  )) as string[];
   return Promise.all(
     ids.map((poolId) =>
-      readClient.readContract({
-        address,
-        functionName: "get_pool",
-        args: [poolId],
-      }) as Promise<PoolView>,
+      withTransientRpcRetry(
+        () =>
+          readClient.readContract({
+            address,
+            functionName: "get_pool",
+            args: [poolId],
+          }) as Promise<PoolView>,
+      ),
     ),
   );
 }
 
 export async function fetchPool(poolId: string): Promise<PoolView> {
-  return (await readClient.readContract({
-    address: requireContractAddress(),
-    functionName: "get_pool",
-    args: [poolId],
-  })) as PoolView;
+  return (await withTransientRpcRetry(() =>
+    readClient.readContract({
+      address: requireContractAddress(),
+      functionName: "get_pool",
+      args: [poolId],
+    }),
+  )) as PoolView;
 }
 
 export async function fetchAccount(address: string): Promise<AccountView> {
   const contract = requireContractAddress();
   const [creditWei, poolIds] = await Promise.all([
-    readClient.readContract({
-      address: contract,
-      functionName: "get_credit",
-      args: [address],
-    }) as Promise<string>,
-    readClient.readContract({
-      address: contract,
-      functionName: "get_account_pool_ids",
-      args: [address],
-    }) as Promise<string[]>,
+    withTransientRpcRetry(
+      () =>
+        readClient.readContract({
+          address: contract,
+          functionName: "get_credit",
+          args: [address],
+        }) as Promise<string>,
+    ),
+    withTransientRpcRetry(
+      () =>
+        readClient.readContract({
+          address: contract,
+          functionName: "get_account_pool_ids",
+          args: [address],
+        }) as Promise<string[]>,
+    ),
   ]);
   const claims = await Promise.all(
     poolIds.map((poolId) =>
-      readClient.readContract({
-        address: contract,
-        functionName: "get_claim",
-        args: [poolId, address],
-      }) as Promise<ClaimView>,
+      withTransientRpcRetry(
+        () =>
+          readClient.readContract({
+            address: contract,
+            functionName: "get_claim",
+            args: [poolId, address],
+          }) as Promise<ClaimView>,
+      ),
     ),
   );
   return { address, creditWei, poolIds, claims };

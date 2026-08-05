@@ -171,6 +171,26 @@ test("configured contract loading does not show design pool cards as live conten
   expect(screen.queryByRole("link", { name: /View Details for node-tmp/i })).not.toBeInTheDocument();
 });
 
+test("configured contract retries a transient pool read failure before showing live content", async () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+  let poolIdsAttempts = 0;
+  genlayerMocks.readContract.mockImplementation(async ({ functionName, args }) => {
+    if (functionName === "get_pool_ids") {
+      poolIdsAttempts += 1;
+      if (poolIdsAttempts === 1) throw new Error("Failed to fetch");
+      return ["node-tmp"];
+    }
+    if (functionName === "get_pool" && args?.[0] === "node-tmp") return contractPool("COMMIT_OPEN");
+    return [];
+  });
+
+  render(<App />);
+
+  expect(await screen.findByRole("link", { name: /View Details for node-tmp/i })).toBeInTheDocument();
+  expect(screen.queryByText(/Failed to fetch/i)).not.toBeInTheDocument();
+  expect(poolIdsAttempts).toBe(2);
+});
+
 test("pool workspace exposes one legal primary action and hides system controls", async () => {
   if (import.meta.env.VITE_CONTRACT_ADDRESS) {
     genlayerMocks.readContract.mockImplementation(async ({ functionName, args }) => {
@@ -339,6 +359,32 @@ test("create pool amount is entered as GEN and submitted to the contract as wei"
       }),
     ),
   );
+});
+
+test("create pool retries a transient receipt fetch before showing finalized state", async () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+  const metamask = provider(["0x7777777777777777777777777777777777777777"], "0x70", { isMetaMask: true });
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: { providers: [metamask], request: vi.fn() },
+  });
+  localStorage.setItem("disclosureDividend.walletId", "metamask");
+  localStorage.setItem("disclosureDividend.walletAccount", "0x7777777777777777777777777777777777777777");
+  genlayerMocks.waitForTransactionReceipt
+    .mockRejectedValueOnce(new Error("Failed to fetch"))
+    .mockResolvedValueOnce({ status: "accepted" })
+    .mockResolvedValueOnce({ status: "finalized" });
+
+  window.location.hash = "#/create";
+  render(<App />);
+
+  const submit = await screen.findByRole("button", { name: /Create and Fund Pool/i });
+  await waitFor(() => expect(submit).toBeEnabled());
+  await userEvent.click(submit);
+
+  await waitFor(() => expect(window.location.hash).toBe("#/pools/node-tmp"));
+  expect(screen.queryByText(/Failed to fetch/i)).not.toBeInTheDocument();
+  expect(genlayerMocks.waitForTransactionReceipt).toHaveBeenCalledTimes(3);
 });
 
 test("finalized split keeps technical details contextual", async () => {
