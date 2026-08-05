@@ -397,6 +397,8 @@ The contract may store short human-readable reason text for a final attempt, but
 - Canonical reads: pool, claims, attempt, credit, contract summary after each finalized step.
 - Balance/receipt proof: safe allowlisted tx hashes, statuses, finality, public addresses, and before/after balances for withdrawal.
 - Evidence path: `docs/evidence/studionet/deployment.json`.
+- CI evidence: `https://github.com/duclucky/disclosure-dividend/actions/runs/30979995084`.
+- Frontend Sites URL: `https://disclosure-dividend.dokiendue735301.chatgpt.site` with current owner-only/private access.
 - Resume/idempotency: one active `deployment.json`; superseded revisions archived with reason and recovery evidence. The earliest diagnostic revision predates bond-refund recovery, so only sponsor reward recovery is claimed for that revision.
 
 ## Definition of Done
@@ -424,7 +426,7 @@ The contract may store short human-readable reason text for a final attempt, but
 
 - Frontend Phase 3B baseline is buildable and uses clearly labeled design data only when no contract address is configured.
 - Contract source, direct tests, `npm run check`, public GitHub, Studionet deployment, and script-signed lifecycle are complete.
-- Browser-wallet writes, production frontend URL, CI URL, and final Portal submission remain pending until their phases produce evidence.
+- Browser-wallet writes, public frontend access, and final Portal submission remain pending until their phases produce evidence.
 - No legal/security-program adoption or non-Studionet deployment is claimed.
 
 ## Kill criteria
