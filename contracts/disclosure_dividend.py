@@ -224,6 +224,8 @@ def _source_result(
             + ".json"
         )
     patch_url = target_repository.rstrip("/") + "/commit/" + patch_commit
+    if advisory_database_commit.startswith("global:"):
+        patch_url = patch_url + ".patch"
     advisory_stage, advisory_body = _read_source(advisory_url)
     patch_stage, patch_body = _read_source(patch_url)
     source_stage = "COMPLETE"
