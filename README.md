@@ -2,7 +2,7 @@
 
 Disclosure Dividend is a GenLayer Projects-track dApp that divides a funded open-source security reward among researchers whose sealed pre-disclosure reports prove locked contribution roles against a later public advisory and patch.
 
-Status: **Studionet lifecycle complete; frontend production deployment pending**.
+Status: **Studionet lifecycle complete; Vercel frontend deployed**.
 
 ## Live project evidence
 
@@ -11,8 +11,8 @@ Status: **Studionet lifecycle complete; frontend production deployment pending**
 - Contract Explorer: `https://explorer-studio.genlayer.com/tx/0x248225cd3616bd352acdacf0018cb09c7faf7240f82edb3d7b1699bc1d03fe7d`
 - Source commit: `94a4597cf37d5c8dbb002b52fd7fbcd54afed45a`
 - Lifecycle evidence: `docs/evidence/studionet/deployment.json`
-- CI: `https://github.com/duclucky/disclosure-dividend/actions/runs/30979995084`
-- Frontend production URL: `https://disclosure-dividend.dokiendue735301.chatgpt.site` (currently owner-only/private Sites access)
+- CI: `https://github.com/duclucky/disclosure-dividend/actions/runs/30980558503`
+- Frontend production URL: `https://disclosure-dividend.vercel.app`
 - Final demo state: `FINALIZED_LIFECYCLE`
 - Final pool: `node-tmp-msfnpd9s`, status `DISTRIBUTED`
 - Final accounting: `total_received=1025`, `total_withdrawn=1025`, `contract_liability=0`
@@ -49,5 +49,4 @@ Result: GenVM lint/schema check passed, 13 direct/static contract tests passed, 
 ## Honest limits
 
 - The current frontend reads/writes the configured Studionet contract through `genlayer-js`, but a browser-wallet production walkthrough is still pending.
-- Production frontend deployment exists on Sites, but public reviewer access is pending explicit approval.
 - No real security-program adoption, mainnet deployment, or non-Studionet value claim is made.

@@ -21,13 +21,11 @@ https://github.com/duclucky/disclosure-dividend
 
 ## Frontend
 
-https://disclosure-dividend.dokiendue735301.chatgpt.site
-
-Current access note: the Sites deployment is production but owner-only/private. Make it public before using it as a reviewer-facing submission URL.
+https://disclosure-dividend.vercel.app
 
 ## CI
 
-https://github.com/duclucky/disclosure-dividend/actions/runs/30979995084
+https://github.com/duclucky/disclosure-dividend/actions/runs/30980558503
 
 ## Lifecycle evidence
 
@@ -49,6 +47,5 @@ Validators inspect the GitHub advisory `GHSA-ph9p-34f9-6g65`, the patch commit `
 
 ## Honest limits
 
-- The frontend has been deployed privately on Sites; public reviewer access still needs explicit approval.
 - Browser-wallet walkthrough evidence is not claimed yet.
 - No mainnet deployment, real security-program adoption, or non-Studionet value claim is made.

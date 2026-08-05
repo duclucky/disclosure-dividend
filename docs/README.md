@@ -46,7 +46,7 @@ Disclosure Dividend lets a sponsor fund an OSS security reward before disclosure
 | Differentiation | `PASS` | Sealed pre-disclosure commitments plus validator-controlled role-bucket payouts differ from covenant/quarantine, escrow, market settlement, and procurement-winner patterns. |
 | Claim-to-code | `PASS` | Matrix below maps each claim to methods, reads, tests, and current Studionet evidence where produced. |
 | Full lifecycle | `PASS` | Studionet lifecycle evidence covers create/fund, commit, source verification, reveal, review, credit withdrawal, and canonical reads in `docs/evidence/studionet/deployment.json`. |
-| Scope honesty | `PASS` | Contract, tests, Studionet deployment, lifecycle, and local frontend build are verified. Browser-wallet production walkthrough, production frontend URL, and CI URL remain pending until produced. |
+| Scope honesty | `PASS` | Contract, tests, Studionet deployment, lifecycle, CI, and Vercel frontend deployment are verified. Browser-wallet production walkthrough remains pending until produced. |
 
 ## Actors, roles and incentives
 
@@ -375,7 +375,7 @@ The contract may store short human-readable reason text for a final attempt, but
 | Validators classify roles | `adjudicate_pool`, `ReviewAttempt` | `get_attempt`, `get_pool_claims` | `test_report_text_cannot_expand_roles_outside_locked_enum` | `0x7d7623e1f3cbd34d8fb63c8bcbd9df5427dc0171eb43a8b41bbb2fefacdff430` |
 | Finalized split opens deterministic GEN credits | `adjudicate_pool`, credit ledger | `get_credit`, `get_claim` | `test_distribution_opens_researcher_and_sponsor_credits` | Final read: pool `DISTRIBUTED`, claim `MATERIAL`, credit opened then withdrawn |
 | Credits can be withdrawn once | `withdraw_credit` | `get_credit`, summary | `test_withdraw_credit_debits_and_blocks_double_withdraw` | `0x0081dbd45e0b0e2498b6296d243d7ff89ea77e05c6b5c2ea832b2ad625aeac81` |
-| UI does not show system/reviewer controls | Frontend route/action gating | Rendered app tests | `frontend/src/App.test.tsx` | Local build verified; production URL pending |
+| UI does not show system/reviewer controls | Frontend route/action gating | Rendered app tests | `frontend/src/App.test.tsx` | Vercel URL: `https://disclosure-dividend.vercel.app` |
 | Missing deployment is honestly labeled | Frontend missing-address path | UI notice | `frontend/src/App.test.tsx` | Local test verified |
 
 ## Analogue and differentiation matrix
@@ -397,8 +397,8 @@ The contract may store short human-readable reason text for a final attempt, but
 - Canonical reads: pool, claims, attempt, credit, contract summary after each finalized step.
 - Balance/receipt proof: safe allowlisted tx hashes, statuses, finality, public addresses, and before/after balances for withdrawal.
 - Evidence path: `docs/evidence/studionet/deployment.json`.
-- CI evidence: `https://github.com/duclucky/disclosure-dividend/actions/runs/30979995084`.
-- Frontend Sites URL: `https://disclosure-dividend.dokiendue735301.chatgpt.site` with current owner-only/private access.
+- CI evidence: `https://github.com/duclucky/disclosure-dividend/actions/runs/30980558503`.
+- Frontend Vercel URL: `https://disclosure-dividend.vercel.app`.
 - Resume/idempotency: one active `deployment.json`; superseded revisions archived with reason and recovery evidence. The earliest diagnostic revision predates bond-refund recovery, so only sponsor reward recovery is claimed for that revision.
 
 ## Definition of Done
@@ -426,7 +426,7 @@ The contract may store short human-readable reason text for a final attempt, but
 
 - Frontend Phase 3B baseline is buildable and uses clearly labeled design data only when no contract address is configured.
 - Contract source, direct tests, `npm run check`, public GitHub, Studionet deployment, and script-signed lifecycle are complete.
-- Browser-wallet writes, public frontend access, and final Portal submission remain pending until their phases produce evidence.
+- Browser-wallet writes and final Portal submission remain pending until their phases produce evidence.
 - No legal/security-program adoption or non-Studionet deployment is claimed.
 
 ## Kill criteria
