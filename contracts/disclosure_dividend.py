@@ -851,8 +851,12 @@ class Contract(gl.Contract):
         pool = self.pools[pool_id]
         if _addr_key(gl.message.sender_address) != _addr_key(pool.sponsor):
             raise gl.vm.UserError("Only sponsor can cancel")
-        if pool.status == "DISTRIBUTED":
-            raise gl.vm.UserError("Distributed pool cannot be cancelled")
+        if pool.status == "CANCELLED":
+            return
+        safe_pre_claim_cancel = pool.status == "COMMIT_OPEN" and int(pool.claim_count) == 0
+        safe_source_recovery_cancel = pool.status == "RETRYABLE" and int(pool.revealed_count) == 0
+        if not safe_pre_claim_cancel and not safe_source_recovery_cancel:
+            raise gl.vm.UserError("Pool cannot be cancelled in this state")
         claimants = _split_csv(pool.claimants_csv)
         for claimant in claimants:
             key = pool_id + "|" + claimant.lower()

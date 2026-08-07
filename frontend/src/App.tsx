@@ -12,6 +12,9 @@ import {
   Wallet,
 } from "lucide-react";
 import {
+  adjudicatePool,
+  closeCommitWindow,
+  closeRevealWindow,
   configuredContractAddress,
   connectWallet,
   createPool,
@@ -20,9 +23,12 @@ import {
   fetchAccount,
   fetchPools,
   getWalletBalance,
+  proposeDisclosure,
   revealClaim,
   restoreWalletSession,
+  retryPool,
   sealClaim,
+  verifyDisclosure,
   withdrawCredit,
   type AccountView,
   type PoolStatus,
@@ -715,6 +721,9 @@ function PoolWorkspace({
   const [commitment, setCommitment] = useState("");
   const [reportUrl, setReportUrl] = useState("");
   const [salt, setSalt] = useState("");
+  const [ghsaId, setGhsaId] = useState("");
+  const [advisoryCommit, setAdvisoryCommit] = useState("");
+  const [patchCommit, setPatchCommit] = useState("");
   const [txState, setTxState] = useState("");
   const [busy, setBusy] = useState(false);
   const pool = useMemo(
@@ -726,6 +735,20 @@ function PoolWorkspace({
   const canWrite = Boolean(configuredContractAddress && wallet.account && !busy);
   const canSeal = Boolean(canWrite && pool?.status === "COMMIT_OPEN");
   const canReveal = Boolean(canWrite && pool?.status === "REVEAL_OPEN");
+
+  async function runLifecycleWrite(label: string, action: () => Promise<unknown>) {
+    setBusy(true);
+    setTxState(`Submitting ${label}...`);
+    try {
+      await action();
+      setTxState(`${label} accepted and finalized. Refreshing pool state.`);
+      await poolState.refresh();
+    } catch (err) {
+      setTxState(err instanceof Error ? err.message : `Could not submit ${label}`);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onSeal() {
     if (!pool || !canSeal) return;
@@ -755,6 +778,38 @@ function PoolWorkspace({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function onCloseCommit() {
+    if (!pool || !canWrite) return;
+    await runLifecycleWrite("close commit window", () => closeCommitWindow(wallet.account, pool.id));
+  }
+
+  async function onProposeDisclosure() {
+    if (!pool || !canWrite) return;
+    await runLifecycleWrite("disclosure source proposal", () =>
+      proposeDisclosure(wallet.account, pool.id, ghsaId.trim(), advisoryCommit.trim(), patchCommit.trim()),
+    );
+  }
+
+  async function onVerifyDisclosure() {
+    if (!pool || !canWrite) return;
+    await runLifecycleWrite("disclosure verification", () => verifyDisclosure(wallet.account, pool.id));
+  }
+
+  async function onCloseReveal() {
+    if (!pool || !canWrite) return;
+    await runLifecycleWrite("close reveal window", () => closeRevealWindow(wallet.account, pool.id));
+  }
+
+  async function onAdjudicate() {
+    if (!pool || !canWrite) return;
+    await runLifecycleWrite("validator review request", () => adjudicatePool(wallet.account, pool.id));
+  }
+
+  async function onRetryPool() {
+    if (!pool || !canWrite) return;
+    await runLifecycleWrite("pool retry", () => retryPool(wallet.account, pool.id));
   }
 
   return (
@@ -799,6 +854,12 @@ function PoolWorkspace({
                 ? "Seal My Report"
                 : pool.status === "REVEAL_OPEN"
                   ? "Reveal My Report"
+                  : pool.status === "SOURCE_PENDING"
+                    ? "Verify Disclosure Source"
+                    : pool.status === "READY_FOR_REVIEW"
+                      ? "Review Contributions"
+                      : pool.status === "RETRYABLE"
+                        ? "Retry Evidence"
                   : statusLabels[pool.status]}
             </h2>
             <p>
@@ -806,7 +867,13 @@ function PoolWorkspace({
                 ? "Publish your commit-pinned report URL and salt so the contract can match the original commitment."
                 : pool.status === "COMMIT_OPEN"
                   ? "Submit a commitment digest before the deadline. Keep the salt locally until the reveal phase opens."
-                  : "No user transaction is available for this pool in its current lifecycle state."}
+                  : pool.status === "SOURCE_PENDING"
+                    ? "Submit the public GHSA and patch identity, then ask validators to verify the disclosure source."
+                    : pool.status === "READY_FOR_REVIEW"
+                      ? "Request validator review after the reveal window closes so credits can be finalized from public evidence."
+                      : pool.status === "RETRYABLE"
+                        ? "Retry the pool after correcting unavailable or mismatched evidence."
+                        : "No user transaction is available for this pool in its current lifecycle state."}
             </p>
             {pool.status === "REVEAL_OPEN" ? (
               <>
@@ -818,6 +885,9 @@ function PoolWorkspace({
                   <Fingerprint size={18} aria-hidden="true" />
                   Reveal Report
                 </button>
+                <button className="secondary-cta" type="button" onClick={onCloseReveal} disabled={!canWrite}>
+                  Close Reveal Window
+                </button>
               </>
             ) : pool.status === "COMMIT_OPEN" ? (
               <>
@@ -828,6 +898,41 @@ function PoolWorkspace({
                 <button className="primary-cta" type="button" onClick={onSeal} disabled={!canSeal || commitment.length !== 64}>
                   <Fingerprint size={18} aria-hidden="true" />
                   Seal My Report
+                </button>
+                <button className="secondary-cta" type="button" onClick={onCloseCommit} disabled={!canWrite}>
+                  Close Commit Window
+                </button>
+              </>
+            ) : pool.status === "SOURCE_PENDING" ? (
+              <>
+                <label htmlFor="ghsaId">GHSA ID</label>
+                <input id="ghsaId" value={ghsaId} onChange={(event) => setGhsaId(event.target.value)} placeholder="GHSA-ph9p-34f9-6g65" />
+                <label htmlFor="advisoryCommit">Advisory database commit</label>
+                <input id="advisoryCommit" value={advisoryCommit} onChange={(event) => setAdvisoryCommit(event.target.value)} placeholder="2e6f60c" />
+                <label htmlFor="patchCommit">Patch commit</label>
+                <input id="patchCommit" value={patchCommit} onChange={(event) => setPatchCommit(event.target.value)} placeholder="efa4a06" />
+                <button
+                  className="primary-cta"
+                  type="button"
+                  onClick={onProposeDisclosure}
+                  disabled={!canWrite || !ghsaId.trim() || !advisoryCommit.trim() || !patchCommit.trim()}
+                >
+                  Propose Disclosure
+                </button>
+                <button className="secondary-cta" type="button" onClick={onVerifyDisclosure} disabled={!canWrite}>
+                  Verify Disclosure
+                </button>
+              </>
+            ) : pool.status === "READY_FOR_REVIEW" ? (
+              <>
+                <button className="primary-cta" type="button" onClick={onAdjudicate} disabled={!canWrite}>
+                  Request Validator Review
+                </button>
+              </>
+            ) : pool.status === "RETRYABLE" ? (
+              <>
+                <button className="primary-cta" type="button" onClick={onRetryPool} disabled={!canWrite}>
+                  Retry Pool
                 </button>
               </>
             ) : (

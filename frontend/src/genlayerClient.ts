@@ -1,6 +1,6 @@
 import { createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
-import { TransactionStatus, type TransactionHash } from "genlayer-js/types";
+import { TransactionStatus, type CalldataEncodable, type TransactionHash } from "genlayer-js/types";
 
 export type PoolStatus =
   | "COMMIT_OPEN"
@@ -587,6 +587,41 @@ export async function revealClaim(account: string, poolId: string, reportUrl: st
     value: BigInt(0),
   })) as TransactionHash;
   return waitForAcceptedAndFinalized(hash);
+}
+
+async function writePoolLifecycle(account: string, functionName: string, args: CalldataEncodable[]) {
+  await ensureActiveWalletOnStudionet();
+  const hash = (await writeClient(account).writeContract({
+    address: requireContractAddress(),
+    functionName,
+    args,
+    value: BigInt(0),
+  })) as TransactionHash;
+  return waitForAcceptedAndFinalized(hash);
+}
+
+export async function closeCommitWindow(account: string, poolId: string) {
+  return writePoolLifecycle(account, "close_commit_window", [poolId]);
+}
+
+export async function proposeDisclosure(account: string, poolId: string, ghsaId: string, advisoryDatabaseCommit: string, patchCommit: string) {
+  return writePoolLifecycle(account, "propose_disclosure", [poolId, ghsaId, advisoryDatabaseCommit, patchCommit]);
+}
+
+export async function verifyDisclosure(account: string, poolId: string) {
+  return writePoolLifecycle(account, "verify_disclosure", [poolId]);
+}
+
+export async function closeRevealWindow(account: string, poolId: string) {
+  return writePoolLifecycle(account, "close_reveal_window", [poolId]);
+}
+
+export async function adjudicatePool(account: string, poolId: string) {
+  return writePoolLifecycle(account, "adjudicate_pool", [poolId]);
+}
+
+export async function retryPool(account: string, poolId: string) {
+  return writePoolLifecycle(account, "retry_pool", [poolId]);
 }
 
 export async function withdrawCredit(account: string, amountWei: string) {

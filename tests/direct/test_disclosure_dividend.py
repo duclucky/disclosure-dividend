@@ -56,6 +56,51 @@ def test_source_target_mismatch_goes_retryable_without_credit(direct_vm, direct_
     assert contract.get_credit(to_hex(direct_bob)) == "0"
 
 
+def test_cancel_pool_is_idempotent_and_cannot_double_credit_recovered_funds(direct_vm, direct_deploy, direct_alice):
+    contract = direct_deploy(CONTRACT_PATH)
+    create_pool(contract, direct_vm, direct_alice)
+
+    direct_vm.sender = direct_alice
+    contract.cancel_pool("node-tmp")
+    first_summary = contract.get_contract_summary()
+    first_credit = contract.get_credit(to_hex(direct_alice))
+
+    contract.cancel_pool("node-tmp")
+
+    assert contract.get_pool("node-tmp")["status"] == "CANCELLED"
+    assert contract.get_credit(to_hex(direct_alice)) == first_credit
+    assert contract.get_contract_summary() == first_summary
+
+
+def test_cancel_pool_cannot_bypass_live_claim_adjudication_or_open_duplicate_credits(
+    direct_vm,
+    direct_deploy,
+    direct_alice,
+    direct_bob,
+):
+    contract = direct_deploy(CONTRACT_PATH)
+    create_pool(contract, direct_vm, direct_alice)
+    commit_claim(contract, direct_vm, direct_bob)
+    direct_vm.warp(COMMIT_DEADLINE)
+    contract.close_commit_window("node-tmp")
+    contract.propose_disclosure("node-tmp", "GHSA-ph9p-34f9-6g65", "2e6f60c", "efa4a06")
+    mock_source_success(direct_vm)
+    contract.verify_disclosure("node-tmp")
+    contract.reveal_claim("node-tmp", "https://raw.githubusercontent.com/acme/reports/abc/node-tmp.md", "salt-a")
+    direct_vm.warp(AFTER_REVEAL)
+    contract.close_reveal_window("node-tmp")
+
+    direct_vm.sender = direct_alice
+    with direct_vm.expect_revert("Pool cannot be cancelled in this state"):
+        contract.cancel_pool("node-tmp")
+
+    assert contract.get_pool("node-tmp")["status"] == "READY_FOR_REVIEW"
+    assert contract.get_credit(to_hex(direct_alice)) == "0"
+    assert contract.get_credit(to_hex(direct_bob)) == "0"
+    assert contract.get_contract_summary()["contract_liability"] == "0"
+    assert contract.get_contract_summary()["total_received"] == "1025"
+
+
 def test_reveal_requires_commitment_preimage(direct_vm, direct_deploy, direct_alice, direct_bob):
     contract = direct_deploy(CONTRACT_PATH)
     create_pool(contract, direct_vm, direct_alice)

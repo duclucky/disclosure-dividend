@@ -330,6 +330,119 @@ test("distributed live pool does not expose a seal transaction action", async ()
   expect(screen.getAllByText(/Reward split finalized/i).length).toBeGreaterThan(0);
 });
 
+test("pool workspace exposes browser writes to advance disclosure verification", async () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+  genlayerMocks.readContract.mockImplementation(async ({ functionName, args }) => {
+    if (functionName === "get_pool_ids") return ["source-pool"];
+    if (functionName === "get_pool" && args?.[0] === "source-pool") return contractPool("SOURCE_PENDING", "source-pool");
+    return [];
+  });
+  const sponsor = provider(["0x7777777777777777777777777777777777777777"], "0x70", { isMetaMask: true });
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: { providers: [sponsor], request: vi.fn() },
+  });
+  localStorage.setItem("disclosureDividend.walletId", "metamask");
+  localStorage.setItem("disclosureDividend.walletAccount", "0x7777777777777777777777777777777777777777");
+
+  window.location.hash = "#/pools/source-pool";
+  render(<App />);
+
+  await screen.findByRole("heading", { name: /source-pool/i });
+  await userEvent.type(screen.getByLabelText(/GHSA ID/i), "GHSA-ph9p-34f9-6g65");
+  await userEvent.type(screen.getByLabelText(/Advisory database commit/i), "2e6f60c");
+  await userEvent.type(screen.getByLabelText(/Patch commit/i), "efa4a06");
+  await userEvent.click(screen.getByRole("button", { name: /Propose Disclosure/i }));
+
+  await waitFor(() =>
+    expect(genlayerMocks.writeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "propose_disclosure",
+        args: ["source-pool", "GHSA-ph9p-34f9-6g65", "2e6f60c", "efa4a06"],
+      }),
+    ),
+  );
+
+  await userEvent.click(screen.getByRole("button", { name: /Verify Disclosure/i }));
+  await waitFor(() =>
+    expect(genlayerMocks.writeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "verify_disclosure",
+        args: ["source-pool"],
+      }),
+    ),
+  );
+});
+
+test("pool workspace exposes browser writes to close windows and request adjudication", async () => {
+  if (!import.meta.env.VITE_CONTRACT_ADDRESS) return;
+  genlayerMocks.readContract.mockImplementation(async ({ functionName, args }) => {
+    if (functionName === "get_pool_ids") return ["commit-pool", "reveal-pool", "review-pool", "retry-pool"];
+    if (functionName === "get_pool" && args?.[0] === "commit-pool") return contractPool("COMMIT_OPEN", "commit-pool");
+    if (functionName === "get_pool" && args?.[0] === "reveal-pool") return contractPool("REVEAL_OPEN", "reveal-pool");
+    if (functionName === "get_pool" && args?.[0] === "review-pool") return contractPool("READY_FOR_REVIEW", "review-pool");
+    if (functionName === "get_pool" && args?.[0] === "retry-pool") return contractPool("RETRYABLE", "retry-pool");
+    return [];
+  });
+  const participant = provider(["0x7777777777777777777777777777777777777777"], "0x70", { isMetaMask: true });
+  Object.defineProperty(window, "ethereum", {
+    configurable: true,
+    value: { providers: [participant], request: vi.fn() },
+  });
+  localStorage.setItem("disclosureDividend.walletId", "metamask");
+  localStorage.setItem("disclosureDividend.walletAccount", "0x7777777777777777777777777777777777777777");
+
+  window.location.hash = "#/pools/commit-pool";
+  render(<App />);
+
+  await screen.findByRole("heading", { name: /commit-pool/i });
+  await userEvent.click(screen.getByRole("button", { name: /Close Commit Window/i }));
+  await waitFor(() =>
+    expect(genlayerMocks.writeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "close_commit_window",
+        args: ["commit-pool"],
+      }),
+    ),
+  );
+
+  window.location.hash = "#/pools/reveal-pool";
+  await screen.findByRole("heading", { name: /reveal-pool/i });
+  await userEvent.click(screen.getByRole("button", { name: /Close Reveal Window/i }));
+  await waitFor(() =>
+    expect(genlayerMocks.writeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "close_reveal_window",
+        args: ["reveal-pool"],
+      }),
+    ),
+  );
+
+  window.location.hash = "#/pools/review-pool";
+  await screen.findByRole("heading", { name: /review-pool/i });
+  await userEvent.click(screen.getByRole("button", { name: /Request Validator Review/i }));
+  await waitFor(() =>
+    expect(genlayerMocks.writeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "adjudicate_pool",
+        args: ["review-pool"],
+      }),
+    ),
+  );
+
+  window.location.hash = "#/pools/retry-pool";
+  await screen.findByRole("heading", { name: /retry-pool/i });
+  await userEvent.click(screen.getByRole("button", { name: /Retry Pool/i }));
+  await waitFor(() =>
+    expect(genlayerMocks.writeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "retry_pool",
+        args: ["retry-pool"],
+      }),
+    ),
+  );
+});
+
 test("account screen uses GEN credits and user-owned actions", async () => {
   render(<App />);
   await userEvent.click(screen.getByRole("link", { name: /My Claims/i }));
