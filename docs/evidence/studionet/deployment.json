@@ -3,97 +3,97 @@
   "chainId": 61999,
   "rpc": "https://studio.genlayer.com/api",
   "explorer": "https://explorer-studio.genlayer.com",
-  "sourceCommit": "94a4597cf37d5c8dbb002b52fd7fbcd54afed45a",
-  "contractSha256": "d976957fc563f2bf88f949342043fbf30c6d718a8b9a01bcca2b6eb01f95a87e",
-  "updatedAt": "2026-08-05T05:51:05.623Z",
+  "sourceCommit": "1331b8df018f3f47b7bfc08651d5b7537584d1cc",
+  "contractSha256": "4bf75a35d81099f194e774368e5a5441e818f807dc0cd4ce67f9d1dd717a73c3",
+  "updatedAt": "2026-08-07T16:44:57.965Z",
   "wallets": {
     "sponsorAddress": "0xC495ef51618D03267A1f227aFe5b27B38c748272",
     "claimantAddress": "0x45aD397c438397A702B53a7499a78D08961D39Db"
   },
   "primary": {
-    "contractAddress": "0x484f2a86CAFa7E43894d78F846ad132df8Dc6F5A",
-    "transactionHash": "0x248225cd3616bd352acdacf0018cb09c7faf7240f82edb3d7b1699bc1d03fe7d",
+    "contractAddress": "0x51eafA78c75467Fe4AF36f875c70E9A3DB458DBB",
+    "transactionHash": "0xac575dfbba74b422f78ac10aab9e2ac896cb3df570ae2a2b0052c52fdd47750c",
     "status": "FINALIZED",
     "execution": "FINISHED_WITH_RETURN",
-    "finalizedAt": "2026-08-05T05:38:42.128Z"
+    "finalizedAt": "2026-08-07T16:23:59.321Z"
   },
-  "status": "DEPLOYED",
+  "status": "FINALIZED_LIFECYCLE",
   "demo": {
-    "poolId": "node-tmp-msfnpd9s",
+    "poolId": "node-tmp-msj5t2v5",
     "reportUrl": "https://raw.githubusercontent.com/duclucky/disclosure-dividend/main/docs/evidence/public-fixtures/node-tmp-report.md",
-    "salt": "salt-msfnpd9s",
-    "commitDeadline": "2026-08-05T05:42:42Z",
-    "revealDeadline": "2026-08-05T05:48:42Z",
+    "salt": "salt-msj5t2v5",
+    "commitDeadline": "2026-08-07T16:32:47Z",
+    "revealDeadline": "2026-08-07T16:38:47Z",
     "transactions": {
       "createPool": {
-        "transactionHash": "0xfa7ef5e7b3f5c6a73a3696691310221a3cf6ca27801c0b28fe4468f7fb9c52e6",
+        "transactionHash": "0x8b521b7903b496d63e14b2f59bd11e3bd4c5517a0bf81f154a0b3bd09f694236",
         "status": "FINALIZED",
         "execution": "FINISHED_WITH_RETURN",
-        "finalizedAt": "2026-08-05T05:39:26.077Z"
+        "finalizedAt": "2026-08-07T16:29:41.416Z"
       },
       "commitClaim": {
-        "transactionHash": "0x03510561dfe19f9ac067159fc8062347c94ad3193bb14e482bc0cf3f20567332",
+        "transactionHash": "0xeb9b99470f2a44510f5090c639c99e1cb0e9191d216eca7326171e0ed6df0f56",
         "status": "FINALIZED",
         "execution": "FINISHED_WITH_RETURN",
-        "finalizedAt": "2026-08-05T05:40:13.703Z"
+        "finalizedAt": "2026-08-07T16:31:45.514Z"
       },
       "closeCommit": {
-        "transactionHash": "0xd4afaa62707d66a5e877819fa580c7cbc59cb3354a8a9f51c646e1577969c366",
+        "transactionHash": "0x2f5357005896ef35d8bcc1e7e9d06cfe3b70e9910b9d02b433a213228fe89e15",
         "status": "FINALIZED",
         "execution": "FINISHED_WITH_RETURN",
-        "finalizedAt": "2026-08-05T05:43:29.728Z"
+        "finalizedAt": "2026-08-07T16:33:37.439Z"
       },
       "proposeDisclosure": {
-        "transactionHash": "0x49d5abdf24443c7ff7bdf000e09d6105bf7050c14b4d94e299a5cf876cb29405",
+        "transactionHash": "0x8a2e7a91c4a770ab3330788bf737d7ce46cb1a841955bd55b476734213830c10",
         "status": "FINALIZED",
         "execution": "FINISHED_WITH_RETURN",
-        "finalizedAt": "2026-08-05T05:44:09.158Z"
+        "finalizedAt": "2026-08-07T16:34:19.087Z"
       },
       "verifyDisclosure": {
-        "transactionHash": "0xfa024b835546e1d1667ec97f24952e067f8fb007b78c34262cb67dd3affdb4c7",
+        "transactionHash": "0x920f2ba3cd412c997d0e06ceaefbf1d96c0e1982a188a76c6e005e6348a12025",
         "status": "FINALIZED",
         "execution": "FINISHED_WITH_RETURN",
-        "finalizedAt": "2026-08-05T05:44:57.423Z"
+        "finalizedAt": "2026-08-07T16:35:04.476Z"
       },
       "revealClaim": {
-        "transactionHash": "0x3f5f6bec2e3f6c504e6781da460c5c69a4b4a4e811bbc3eb4d72317db10bb356",
+        "transactionHash": "0xb1cae3798f7c9adbcaac4d1360b30631e55d474121754a3763f6fafaab4a4bdb",
         "status": "FINALIZED",
         "execution": "FINISHED_WITH_RETURN",
-        "finalizedAt": "2026-08-05T05:45:47.532Z"
+        "finalizedAt": "2026-08-07T16:35:40.988Z"
       },
       "closeReveal": {
-        "transactionHash": "0x829cd891d12fc7b24536d6361755c1c8701bd96e9cb4e32ae6af4093b4bb6ad7",
+        "transactionHash": "0xb54eb9283526b7b24d2941f3e71b9e8765b00effc564ae78e9c683af29f5a898",
         "status": "FINALIZED",
         "execution": "FINISHED_WITH_RETURN",
-        "finalizedAt": "2026-08-05T05:49:28.406Z"
+        "finalizedAt": "2026-08-07T16:40:12.616Z"
       },
       "adjudicate": {
-        "transactionHash": "0x7d7623e1f3cbd34d8fb63c8bcbd9df5427dc0171eb43a8b41bbb2fefacdff430",
+        "transactionHash": "0xaf62c435b5a99c2fb95ff6d41b9099e5cf5f89bcaef5a0124d67fc5a8ca2b613",
         "status": "FINALIZED",
         "execution": "FINISHED_WITH_RETURN",
-        "finalizedAt": "2026-08-05T05:50:19.146Z"
+        "finalizedAt": "2026-08-07T16:41:05.319Z"
       },
       "withdrawCredit": {
-        "transactionHash": "0x0081dbd45e0b0e2498b6296d243d7ff89ea77e05c6b5c2ea832b2ad625aeac81",
+        "transactionHash": "0x70919b793137aedbe7b6aa58ff9822a3e7face877c74e641129d89a71ed8bf88",
         "status": "FINALIZED",
         "execution": "FINISHED_WITH_RETURN",
-        "finalizedAt": "2026-08-05T05:50:58.611Z"
+        "finalizedAt": "2026-08-07T16:41:46.719Z"
       }
     },
-    "commitment": "2693aa87a2acea5d2e2d86dbf77c72b998b7c04e1eb573356ca67fedfb6d94e4",
+    "commitment": "d82a6aa3ac475965be20b873da9c62fc2c1e10ae4fbffb8489f75894328ce320",
     "finalReads": {
       "pool": {
         "advisory_database_commit": "global:github-advisories-2026-08-05",
         "attempt_count": "1",
         "claim_count": "1",
         "claim_limit": "6",
-        "commit_deadline": "2026-08-05T05:42:42Z",
+        "commit_deadline": "2026-08-07T16:32:47Z",
         "distributed": true,
         "ghsa_id": "GHSA-ph9p-34f9-6g65",
         "patch_commit": "efa4a06f24374797ae32ab2b6ae39b7a611ae429",
-        "pool_id": "node-tmp-msfnpd9s",
+        "pool_id": "node-tmp-msj5t2v5",
         "reservation_bond_wei": "25",
-        "reveal_deadline": "2026-08-05T05:48:42Z",
+        "reveal_deadline": "2026-08-07T16:38:47Z",
         "revealed_count": "1",
         "reward_wei": "1000",
         "role_weights_csv": "20,30,40,10",
@@ -105,9 +105,9 @@
       "claim": {
         "bond_wei": "25",
         "claimant": "0x45aD397c438397A702B53a7499a78D08961D39Db",
-        "commitment": "2693aa87a2acea5d2e2d86dbf77c72b998b7c04e1eb573356ca67fedfb6d94e4",
+        "commitment": "d82a6aa3ac475965be20b873da9c62fc2c1e10ae4fbffb8489f75894328ce320",
         "outcome": "MATERIAL",
-        "pool_id": "node-tmp-msfnpd9s",
+        "pool_id": "node-tmp-msj5t2v5",
         "report_hash": "1926f3645305dd22c353a1754880ac9b5c3115fa4482daf663bfef8864661692",
         "report_url": "https://raw.githubusercontent.com/duclucky/disclosure-dividend/main/docs/evidence/public-fixtures/node-tmp-report.md",
         "roles_csv": "DISCOVERY,ROOT_CAUSE,EXPLOIT_PROOF,REMEDIATION_VERIFICATION"
@@ -636,6 +636,142 @@
       },
       "status": "SUPERSEDED_BY_SOURCE_CHANGE",
       "supersededAt": "2026-08-05T05:38:01.483Z"
+    },
+    {
+      "sourceCommit": "94a4597cf37d5c8dbb002b52fd7fbcd54afed45a",
+      "contractSha256": "d976957fc563f2bf88f949342043fbf30c6d718a8b9a01bcca2b6eb01f95a87e",
+      "primary": {
+        "contractAddress": "0x484f2a86CAFa7E43894d78F846ad132df8Dc6F5A",
+        "transactionHash": "0x248225cd3616bd352acdacf0018cb09c7faf7240f82edb3d7b1699bc1d03fe7d",
+        "status": "FINALIZED",
+        "execution": "FINISHED_WITH_RETURN",
+        "finalizedAt": "2026-08-05T05:38:42.128Z"
+      },
+      "demo": {
+        "poolId": "node-tmp-msfnpd9s",
+        "reportUrl": "https://raw.githubusercontent.com/duclucky/disclosure-dividend/main/docs/evidence/public-fixtures/node-tmp-report.md",
+        "salt": "salt-msfnpd9s",
+        "commitDeadline": "2026-08-05T05:42:42Z",
+        "revealDeadline": "2026-08-05T05:48:42Z",
+        "transactions": {
+          "createPool": {
+            "transactionHash": "0xfa7ef5e7b3f5c6a73a3696691310221a3cf6ca27801c0b28fe4468f7fb9c52e6",
+            "status": "FINALIZED",
+            "execution": "FINISHED_WITH_RETURN",
+            "finalizedAt": "2026-08-05T05:39:26.077Z"
+          },
+          "commitClaim": {
+            "transactionHash": "0x03510561dfe19f9ac067159fc8062347c94ad3193bb14e482bc0cf3f20567332",
+            "status": "FINALIZED",
+            "execution": "FINISHED_WITH_RETURN",
+            "finalizedAt": "2026-08-05T05:40:13.703Z"
+          },
+          "closeCommit": {
+            "transactionHash": "0xd4afaa62707d66a5e877819fa580c7cbc59cb3354a8a9f51c646e1577969c366",
+            "status": "FINALIZED",
+            "execution": "FINISHED_WITH_RETURN",
+            "finalizedAt": "2026-08-05T05:43:29.728Z"
+          },
+          "proposeDisclosure": {
+            "transactionHash": "0x49d5abdf24443c7ff7bdf000e09d6105bf7050c14b4d94e299a5cf876cb29405",
+            "status": "FINALIZED",
+            "execution": "FINISHED_WITH_RETURN",
+            "finalizedAt": "2026-08-05T05:44:09.158Z"
+          },
+          "verifyDisclosure": {
+            "transactionHash": "0xfa024b835546e1d1667ec97f24952e067f8fb007b78c34262cb67dd3affdb4c7",
+            "status": "FINALIZED",
+            "execution": "FINISHED_WITH_RETURN",
+            "finalizedAt": "2026-08-05T05:44:57.423Z"
+          },
+          "revealClaim": {
+            "transactionHash": "0x3f5f6bec2e3f6c504e6781da460c5c69a4b4a4e811bbc3eb4d72317db10bb356",
+            "status": "FINALIZED",
+            "execution": "FINISHED_WITH_RETURN",
+            "finalizedAt": "2026-08-05T05:45:47.532Z"
+          },
+          "closeReveal": {
+            "transactionHash": "0x829cd891d12fc7b24536d6361755c1c8701bd96e9cb4e32ae6af4093b4bb6ad7",
+            "status": "FINALIZED",
+            "execution": "FINISHED_WITH_RETURN",
+            "finalizedAt": "2026-08-05T05:49:28.406Z"
+          },
+          "adjudicate": {
+            "transactionHash": "0x7d7623e1f3cbd34d8fb63c8bcbd9df5427dc0171eb43a8b41bbb2fefacdff430",
+            "status": "FINALIZED",
+            "execution": "FINISHED_WITH_RETURN",
+            "finalizedAt": "2026-08-05T05:50:19.146Z"
+          },
+          "withdrawCredit": {
+            "transactionHash": "0x0081dbd45e0b0e2498b6296d243d7ff89ea77e05c6b5c2ea832b2ad625aeac81",
+            "status": "FINALIZED",
+            "execution": "FINISHED_WITH_RETURN",
+            "finalizedAt": "2026-08-05T05:50:58.611Z"
+          }
+        },
+        "commitment": "2693aa87a2acea5d2e2d86dbf77c72b998b7c04e1eb573356ca67fedfb6d94e4",
+        "finalReads": {
+          "pool": {
+            "advisory_database_commit": "global:github-advisories-2026-08-05",
+            "attempt_count": "1",
+            "claim_count": "1",
+            "claim_limit": "6",
+            "commit_deadline": "2026-08-05T05:42:42Z",
+            "distributed": true,
+            "ghsa_id": "GHSA-ph9p-34f9-6g65",
+            "patch_commit": "efa4a06f24374797ae32ab2b6ae39b7a611ae429",
+            "pool_id": "node-tmp-msfnpd9s",
+            "reservation_bond_wei": "25",
+            "reveal_deadline": "2026-08-05T05:48:42Z",
+            "revealed_count": "1",
+            "reward_wei": "1000",
+            "role_weights_csv": "20,30,40,10",
+            "sponsor": "0xC495ef51618D03267A1f227aFe5b27B38c748272",
+            "status": "DISTRIBUTED",
+            "target_package": "npm:tmp",
+            "target_repository": "https://github.com/raszi/node-tmp"
+          },
+          "claim": {
+            "bond_wei": "25",
+            "claimant": "0x45aD397c438397A702B53a7499a78D08961D39Db",
+            "commitment": "2693aa87a2acea5d2e2d86dbf77c72b998b7c04e1eb573356ca67fedfb6d94e4",
+            "outcome": "MATERIAL",
+            "pool_id": "node-tmp-msfnpd9s",
+            "report_hash": "1926f3645305dd22c353a1754880ac9b5c3115fa4482daf663bfef8864661692",
+            "report_url": "https://raw.githubusercontent.com/duclucky/disclosure-dividend/main/docs/evidence/public-fixtures/node-tmp-report.md",
+            "roles_csv": "DISCOVERY,ROOT_CAUSE,EXPLOIT_PROOF,REMEDIATION_VERIFICATION"
+          },
+          "claimantCreditWei": "0",
+          "summary": {
+            "contract_liability": "0",
+            "pool_count": "1",
+            "total_received": "1025",
+            "total_withdrawn": "1025"
+          }
+        },
+        "status": "FINALIZED_LIFECYCLE"
+      },
+      "status": "SUPERSEDED_BY_SOURCE_CHANGE",
+      "supersededAt": "2026-08-07T16:23:20.139Z"
+    }
+  ],
+  "failedDemos": [
+    {
+      "poolId": "node-tmp-msj5n4xp",
+      "reportUrl": "https://raw.githubusercontent.com/duclucky/disclosure-dividend/main/docs/evidence/public-fixtures/node-tmp-report.md",
+      "salt": "salt-msj5n4xp",
+      "commitDeadline": "2026-08-07T16:28:10Z",
+      "revealDeadline": "2026-08-07T16:34:10Z",
+      "transactions": {},
+      "resumeReadError": {
+        "name": "InvalidInputRpcError",
+        "message": "Missing or invalid parameters.",
+        "shortMessage": "Missing or invalid parameters.\nDouble check you have provided the correct parameters.",
+        "code": -32000
+      },
+      "archivedAt": "2026-08-07T16:28:47.647Z",
+      "archivedReason": "resume_pool_read_failed",
+      "finalObservedPool": null
     }
   ]
 }

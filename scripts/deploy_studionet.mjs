@@ -231,6 +231,29 @@ async function readView(client, address, functionName, args = []) {
   return jsonSafe(await client.readContract({ address, functionName, args, jsonSafeReturn: true }));
 }
 
+function safeErrorRecord(error) {
+  return {
+    name: error?.name ?? "Error",
+    message: error instanceof Error ? error.message.split("\n")[0] : String(error),
+    shortMessage: error?.shortMessage ?? null,
+    code: error?.code ?? error?.cause?.code ?? null,
+  };
+}
+
+function isMissingPoolError(error) {
+  const text = [
+    error?.message,
+    error?.shortMessage,
+    error?.details,
+    error?.cause?.message,
+    error?.cause?.data?.receipt?.result,
+  ]
+    .filter(Boolean)
+    .map(String)
+    .join(" ");
+  return text.includes("Pool does not exist") || text.includes("UG9vbCBkb2VzIG5vdCBleGlzdA=");
+}
+
 function commitmentFor(poolId, claimant, reportUrl, salt) {
   const reportHash = createHash("sha256").update(reportUrl).digest("hex");
   const payload = ["DISCLOSURE_DIVIDEND_V1", poolId, claimant.toLowerCase(), reportHash, salt].join("|");
@@ -264,19 +287,27 @@ async function demo() {
 
   let reusableDemo = evidence.demo ?? null;
   if (reusableDemo?.status !== "FINALIZED_LIFECYCLE" && reusableDemo?.poolId) {
-    const pool = await readView(sponsor.client, contractAddress, "get_pool", [reusableDemo.poolId]);
-    const revealDeadline = new Date(pool.reveal_deadline ?? 0).getTime();
-    const stale =
-      pool.status === "RETRYABLE" ||
-      pool.status === "CANCELLED" ||
-      pool.status === "DISTRIBUTED" ||
-      (pool.status === "REVEAL_OPEN" && Number.isFinite(revealDeadline) && revealDeadline <= Date.now());
-    if (stale) {
+    let pool = null;
+    let archivedReason = null;
+    try {
+      pool = await readView(sponsor.client, contractAddress, "get_pool", [reusableDemo.poolId]);
+      const revealDeadline = new Date(pool.reveal_deadline ?? 0).getTime();
+      const stale =
+        pool.status === "RETRYABLE" ||
+        pool.status === "CANCELLED" ||
+        pool.status === "DISTRIBUTED" ||
+        (pool.status === "REVEAL_OPEN" && Number.isFinite(revealDeadline) && revealDeadline <= Date.now());
+      if (stale) archivedReason = `stale_${String(pool.status).toLowerCase()}`;
+    } catch (error) {
+      archivedReason = isMissingPoolError(error) ? "missing_pool_on_active_contract" : "resume_pool_read_failed";
+      reusableDemo.resumeReadError = safeErrorRecord(error);
+    }
+    if (archivedReason) {
       const failedDemos = [...(evidence.failedDemos ?? [])];
       failedDemos.push({
         ...reusableDemo,
         archivedAt: new Date().toISOString(),
-        archivedReason: `stale_${String(pool.status).toLowerCase()}`,
+        archivedReason,
         finalObservedPool: pool,
       });
       mergeEvidence({ failedDemos, demo: null });
@@ -292,7 +323,7 @@ async function demo() {
     revealDeadline: reusableDemo?.revealDeadline ?? utcTimestamp(DEMO_REVEAL_WINDOW_MS),
     transactions: { ...(reusableDemo?.transactions ?? {}) },
   };
-  const persist = () =>
+  const persist = (patch = {}) =>
     mergeEvidence({
       wallets: {
         ...(readEvidence().wallets ?? {}),
@@ -300,6 +331,7 @@ async function demo() {
         claimantAddress: claimant.account.address,
       },
       demo: demoState,
+      ...patch,
     });
 
   persist();
@@ -417,7 +449,7 @@ async function demo() {
     summary: await readView(sponsor.client, contractAddress, "get_contract_summary", []),
   };
   demoState.status = "FINALIZED_LIFECYCLE";
-  persist();
+  persist({ status: "FINALIZED_LIFECYCLE" });
   console.log(JSON.stringify({ action: "demo", status: demoState.status, finalReads: demoState.finalReads }, null, 2));
 }
 
@@ -523,8 +555,15 @@ async function inspect() {
 }
 
 const command = process.argv[2] ?? "inspect";
-if (command === "deploy") await deploy();
-else if (command === "demo") await demo();
-else if (command === "inspect") await inspect();
-else if (command === "recover") await recover();
-else throw new Error(`Unknown command: ${command}`);
+async function main() {
+  if (command === "deploy") await deploy();
+  else if (command === "demo") await demo();
+  else if (command === "inspect") await inspect();
+  else if (command === "recover") await recover();
+  else throw new Error(`Unknown command: ${command}`);
+}
+
+main().catch((error) => {
+  console.error(JSON.stringify({ action: command, status: "FAILED", error: safeErrorRecord(error) }, null, 2));
+  process.exitCode = 1;
+});

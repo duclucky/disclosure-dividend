@@ -6,7 +6,7 @@
 - Project name: Disclosure Dividend
 - Project slug: `disclosure-dividend`
 - Category: Projects
-- Status: `STUDIONET_LIFECYCLE_COMPLETE`
+- Status: `REVIEWER_REMEDIATION_COMPLETE`
 - Repository: `https://github.com/duclucky/disclosure-dividend`
 - Target network: `studionet`
 
@@ -46,7 +46,7 @@ Disclosure Dividend lets a sponsor fund an OSS security reward before disclosure
 | Differentiation | `PASS` | Sealed pre-disclosure commitments plus validator-controlled role-bucket payouts differ from covenant/quarantine, escrow, market settlement, and procurement-winner patterns. |
 | Claim-to-code | `PASS` | Matrix below maps each claim to methods, reads, tests, and current Studionet evidence where produced. |
 | Full lifecycle | `PASS` | Studionet lifecycle evidence covers create/fund, commit, source verification, reveal, review, credit withdrawal, and canonical reads in `docs/evidence/studionet/deployment.json`. |
-| Scope honesty | `PASS` | Contract, tests, Studionet deployment, lifecycle, CI, and Vercel frontend deployment are verified. Full production browser-wallet lifecycle through final distribution remains pending until produced. |
+| Scope honesty | `PASS` | Contract, tests, Studionet deployment, lifecycle, CI, and Vercel frontend deployment are verified. Reviewer-requested cancellation hardening and browser lifecycle writes are complete. Full production browser-wallet lifecycle through final distribution remains pending until produced. |
 
 ## Actors, roles and incentives
 
@@ -139,7 +139,7 @@ Functional corrections made or required:
 | Close Reveal Window | `close_reveal_window` | Participant | Reveal deadline passed | None | Finalized `READY_FOR_REVIEW` | Explain unrevealed handling |
 | Review Contributions | `adjudicate_pool` | Participant | `READY_FOR_REVIEW` | None | Accepted/decided/finalized then credit reload | `UNVERIFIABLE` becomes `RETRYABLE`; `UNDETERMINED` leaves previous state |
 | Retry Pool | `retry_pool` | Participant | `RETRYABLE` | Corrected source when needed | Finalized attempt and canonical reload | Reads current attempt dynamically |
-| Cancel and Recover | `cancel_pool` | Sponsor | Pre-claim or expired recovery state | None | Finalized cancellation and sponsor credit | Disabled while claimant rights or legal retry remain |
+| Cancel and Recover | `cancel_pool` | Sponsor | `COMMIT_OPEN` with zero claims, or `RETRYABLE` with zero revealed reports | None | Finalized cancellation and sponsor credit | Idempotent; disabled once claimant rights or adjudication path exists |
 | Settle Unrevealed Claims | `settle_unrevealed` | Participant | Reveal deadline passed | None | Finalized deterministic bond accounting | Idempotent |
 | Withdraw Credit | `withdraw_credit` | Credit owner | Positive canonical credit | Amount or full credit | Finalized transfer and refreshed credit | Debit first; show retry if child transfer fails |
 
@@ -199,7 +199,7 @@ READY_FOR_REVIEW --adjudicate_pool accepted/participant--> DISTRIBUTED
 READY_FOR_REVIEW --adjudicate_pool unverifiable/participant--> RETRYABLE
 RETRYABLE --retry_pool/participant--> SOURCE_PENDING or READY_FOR_REVIEW
 COMMIT_OPEN --cancel_pool/sponsor before any claim--> CANCELLED
-RETRYABLE --cancel_pool/sponsor after recovery deadline--> CANCELLED
+RETRYABLE --cancel_pool/sponsor before any revealed report--> CANCELLED
 ```
 
 ### Illegal transitions
@@ -228,8 +228,17 @@ RETRYABLE --cancel_pool/sponsor after recovery deadline--> CANCELLED
 - One reveal per claim.
 - Append-only attempts with current attempt read from state.
 - Distribution sets `DISTRIBUTED` and cannot run again.
+- Cancellation is a no-op after `CANCELLED` and can only open sponsor credit once.
 - Withdraw debits credit before external transfer.
 - `settle_unrevealed` marks processed claims.
+
+## Reviewer remediation
+
+- `cancel_pool` is restricted to explicit safe recovery states: `COMMIT_OPEN` before any claim exists, or `RETRYABLE` before any report has been revealed.
+- Repeated `cancel_pool` on an already cancelled pool returns without changing credit or summary state.
+- `READY_FOR_REVIEW`, `REVEAL_OPEN`, `DISTRIBUTED`, and retryable pools with revealed reports cannot be cancelled.
+- The frontend exposes the write methods needed to advance and adjudicate a pool from the browser: `close_commit_window`, `propose_disclosure`, `verify_disclosure`, `close_reveal_window`, `adjudicate_pool`, and `retry_pool`.
+- Regression coverage: `test_cancel_pool_is_idempotent_and_cannot_double_credit_recovered_funds`, `test_cancel_pool_cannot_bypass_live_claim_adjudication_or_open_duplicate_credits`, and frontend tests for lifecycle write controls.
 
 ## Evidence policy
 
@@ -337,7 +346,7 @@ The contract may store short human-readable reason text for a final attempt, but
 
 | Threat | Attack | Mitigation | Test |
 | --- | --- | --- | --- |
-| Sponsor underpayment | Cancels after claims or distributes twice | Legal-state cancellation and one distribution | Covered by distribution and recovery lifecycle evidence; direct cancel expansion remains future hardening |
+| Sponsor underpayment | Cancels after claims or distributes twice | `cancel_pool` only works in explicit safe states, is sponsor-authorized, and is idempotent; distribution runs once | `test_cancel_pool_is_idempotent_and_cannot_double_credit_recovered_funds`, `test_cancel_pool_cannot_bypass_live_claim_adjudication_or_open_duplicate_credits`, `test_distribution_opens_researcher_and_sponsor_credits` |
 | Researcher duplicate overclaim | Same wallet commits twice or claims every role | One claim per wallet; validator role support bounded | `test_commit_claim_requires_bond_and_prevents_duplicates`, `test_report_text_cannot_expand_roles_outside_locked_enum` |
 | Commitment reveal forgery | Reveal URL/salt does not match commitment | Deterministic preimage check | `test_reveal_requires_commitment_preimage` |
 | Wrong source | Advisory/patch for different repo/package | Source target identity verification | `test_source_target_mismatch_goes_retryable` |
@@ -358,6 +367,7 @@ The contract may store short human-readable reason text for a final attempt, but
 - Semantic mismatch: JSON shape valid but critical fields differ.
 - Verdict classes: distribute and unverifiable/retryable.
 - Duplicate: duplicate pool, claim, reveal, distribution, withdrawal.
+- Cancellation: safe pre-claim cancellation is idempotent and cannot bypass adjudication or open duplicate credits.
 - Accounting/value: payable metadata, reward locks, bond credits, sponsor remainder, debit-before-transfer.
 - Cure/restore: not applicable in v1; retry path covered.
 - Consumer enforcement: no consumer contract; frontend adapter/read proof and documented views covered.
@@ -367,14 +377,15 @@ The contract may store short human-readable reason text for a final attempt, but
 
 | Product claim | Contract method/state | View/read | Direct test | Network evidence |
 | --- | --- | --- | --- | --- |
-| Sponsor funds a locked reward pool | `create_pool`, `Pool.status=COMMIT_OPEN`, reward ledger | `get_pool`, `get_contract_summary` | `test_create_pool_locks_policy_and_value` | `0xfa7ef5e7b3f5c6a73a3696691310221a3cf6ca27801c0b28fe4468f7fb9c52e6` |
-| Researcher seals a pre-disclosure claim | `commit_claim`, `Claim.commitment` | `get_claim`, `get_pool_claims` | `test_commit_claim_requires_bond_and_prevents_duplicates` | `0x03510561dfe19f9ac067159fc8062347c94ad3193bb14e482bc0cf3f20567332` |
-| Disclosure source is verified by validators | `propose_disclosure`, `verify_disclosure` | `get_pool` | `test_global_github_advisory_html_source_can_open_reveal` | `0x49d5abdf24443c7ff7bdf000e09d6105bf7050c14b4d94e299a5cf876cb29405`, `0xfa024b835546e1d1667ec97f24952e067f8fb007b78c34262cb67dd3affdb4c7` |
+| Sponsor funds a locked reward pool | `create_pool`, `Pool.status=COMMIT_OPEN`, reward ledger | `get_pool`, `get_contract_summary` | `test_create_pool_locks_policy_and_value` | `0x8b521b7903b496d63e14b2f59bd11e3bd4c5517a0bf81f154a0b3bd09f694236` |
+| Researcher seals a pre-disclosure claim | `commit_claim`, `Claim.commitment` | `get_claim`, `get_pool_claims` | `test_commit_claim_requires_bond_and_prevents_duplicates` | `0xeb9b99470f2a44510f5090c639c99e1cb0e9191d216eca7326171e0ed6df0f56` |
+| Disclosure source is verified by validators | `propose_disclosure`, `verify_disclosure` | `get_pool` | `test_global_github_advisory_html_source_can_open_reveal` | `0x8a2e7a91c4a770ab3330788bf737d7ce46cb1a841955bd55b476734213830c10`, `0x920f2ba3cd412c997d0e06ceaefbf1d96c0e1982a188a76c6e005e6348a12025` |
 | Invalid source does not pay anyone | `verify_disclosure` sets `RETRYABLE` | `get_pool`, `get_credit` | `test_source_target_mismatch_goes_retryable_without_credit` | Covered by direct test; no invalid value-bearing Studionet demo claimed |
-| Claim owner reveals only matching preimage | `reveal_claim` | `get_claim` | `test_reveal_requires_commitment_preimage` | `0x3f5f6bec2e3f6c504e6781da460c5c69a4b4a4e811bbc3eb4d72317db10bb356` |
-| Validators classify roles | `adjudicate_pool`, `ReviewAttempt` | `get_attempt`, `get_pool_claims` | `test_report_text_cannot_expand_roles_outside_locked_enum` | `0x7d7623e1f3cbd34d8fb63c8bcbd9df5427dc0171eb43a8b41bbb2fefacdff430` |
+| Claim owner reveals only matching preimage | `reveal_claim` | `get_claim` | `test_reveal_requires_commitment_preimage` | `0xb1cae3798f7c9adbcaac4d1360b30631e55d474121754a3763f6fafaab4a4bdb` |
+| Validators classify roles | `adjudicate_pool`, `ReviewAttempt` | `get_attempt`, `get_pool_claims` | `test_report_text_cannot_expand_roles_outside_locked_enum` | `0xaf62c435b5a99c2fb95ff6d41b9099e5cf5f89bcaef5a0124d67fc5a8ca2b613` |
 | Finalized split opens deterministic GEN credits | `adjudicate_pool`, credit ledger | `get_credit`, `get_claim` | `test_distribution_opens_researcher_and_sponsor_credits` | Final read: pool `DISTRIBUTED`, claim `MATERIAL`, credit opened then withdrawn |
-| Credits can be withdrawn once | `withdraw_credit` | `get_credit`, summary | `test_withdraw_credit_debits_and_blocks_double_withdraw` | `0x0081dbd45e0b0e2498b6296d243d7ff89ea77e05c6b5c2ea832b2ad625aeac81` |
+| Credits can be withdrawn once | `withdraw_credit` | `get_credit`, summary | `test_withdraw_credit_debits_and_blocks_double_withdraw` | `0x70919b793137aedbe7b6aa58ff9822a3e7face877c74e641129d89a71ed8bf88` |
+| UI exposes browser lifecycle writes | Frontend state/action gating | Rendered app tests | `frontend/src/App.test.tsx` lifecycle write tests | Vercel bundle contains `Propose Disclosure`, `Request Validator Review`, and `Retry Pool` |
 | UI does not show system/reviewer controls | Frontend route/action gating | Rendered app tests | `frontend/src/App.test.tsx` | Vercel URL: `https://disclosure-dividend.vercel.app` |
 | Missing deployment is honestly labeled | Frontend missing-address path | UI notice | `frontend/src/App.test.tsx` | Local test verified |
 
@@ -397,8 +408,9 @@ The contract may store short human-readable reason text for a final attempt, but
 - Canonical reads: pool, claims, attempt, credit, contract summary after each finalized step.
 - Balance/receipt proof: safe allowlisted tx hashes, statuses, finality, public addresses, and before/after balances for withdrawal.
 - Evidence path: `docs/evidence/studionet/deployment.json`.
-- CI evidence for submission packet commit `8d94a627ff576bacb3b4e8d9e7368567ed26e03d`: `https://github.com/duclucky/disclosure-dividend/actions/runs/31014180121`.
-- Frontend Vercel URL: `https://disclosure-dividend.vercel.app`.
+- CI evidence for the original submission packet commit `8d94a627ff576bacb3b4e8d9e7368567ed26e03d`: `https://github.com/duclucky/disclosure-dividend/actions/runs/31014180121`.
+- Latest remediation verification: local `npm run check` passed after reviewer changes; latest pushed CI should be linked from `docs/SUBMISSION.md`.
+- Frontend Vercel URL: `https://disclosure-dividend.vercel.app`; latest deployment `dpl_CzbKvKpkFcoB2J3DokwKKYgv4aLN` points to contract `0x51eafA78c75467Fe4AF36f875c70E9A3DB458DBB`.
 - Resume/idempotency: one active `deployment.json`; superseded revisions archived with reason and recovery evidence. The earliest diagnostic revision predates bond-refund recovery, so only sponsor reward recovery is claimed for that revision.
 
 ## Definition of Done
@@ -420,13 +432,14 @@ The contract may store short human-readable reason text for a final attempt, but
 - [x] Canonical reads.
 - [x] Meaningful user outcome.
 - [x] Production Vercel deployment and HTTP/bundle verification.
+- [x] Browser exposes lifecycle writes required to advance/adjudicate pools without deployment script control.
 - [x] Primary UI contains only user-relevant data/actions; system/reviewer details are contextual or hidden.
 
 ## Honest limitations
 
 - The frontend uses clearly labeled design data only when no contract address is configured.
-- Contract source, direct tests, `npm run check`, public GitHub, Studionet deployment, successful CI, Vercel deployment, and script-signed lifecycle are complete.
-- Browser-wallet integration is implemented and tested, but a full production browser-wallet lifecycle through final distribution is not claimed.
+- Contract source, direct tests, `npm run check`, public GitHub, Studionet deployment, Vercel deployment, reviewer remediation, and script-signed lifecycle are complete.
+- Browser-wallet integration is implemented and tested, including lifecycle advancement/adjudication controls, but a full production browser-wallet lifecycle through final distribution is not claimed.
 - Final Portal submission remains pending until submitted through an authenticated Portal session.
 - No legal/security-program adoption or non-Studionet deployment is claimed.
 

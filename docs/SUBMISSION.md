@@ -20,22 +20,22 @@ Disclosure Dividend
 
 **Live app:** https://disclosure-dividend.vercel.app
 
-**Contract (studionet):** `0x484f2a86CAFa7E43894d78F846ad132df8Dc6F5A`
+**Contract (studionet):** `0x51eafA78c75467Fe4AF36f875c70E9A3DB458DBB`
 
 ## Copy-ready notes / description
 
-Disclosure Dividend is a GenLayer Projects-track dApp for sponsor-funded open-source security rewards. A sponsor creates a funded GEN pool for a target repository. Researchers seal a report commitment before disclosure, then reveal a public report after a GitHub advisory and patch are available. GenLayer validators independently inspect the bounded public evidence, normalize locked contribution roles, and finalize whether each sealed report materially supports Discovery, Root Cause, Exploit Proof, or Remediation Verification. The finalized consequence opens deterministic native GEN credits for researchers and sponsor remainder credits, with withdrawal guarded by canonical contract state. The repo includes the reusable DisclosureDividend contract, React/Vite frontend, direct/static tests, deployment parser tests, frontend tests, Studionet deployment evidence, successful CI, and a production Vercel app.
+Disclosure Dividend is a GenLayer Projects-track dApp for sponsor-funded open-source security rewards. A sponsor creates a funded GEN pool for a target repository. Researchers seal a report commitment before disclosure, then reveal a public report after a GitHub advisory and patch are available. GenLayer validators independently inspect the bounded public evidence, normalize locked contribution roles, and finalize whether each sealed report materially supports Discovery, Root Cause, Exploit Proof, or Remediation Verification. The finalized consequence opens deterministic native GEN credits for researchers and sponsor remainder credits, with withdrawal guarded by canonical contract state. The repo includes the reusable DisclosureDividend contract, React/Vite frontend, direct/static tests, deployment parser tests, frontend tests, Studionet deployment evidence, successful CI, reviewer-requested cancellation hardening, browser-exposed lifecycle writes, and a production Vercel app.
 
-Character count: 914
+Character count: 991
 
 ## Evidence links
 
 - Repository: https://github.com/duclucky/disclosure-dividend
 - Live frontend: https://disclosure-dividend.vercel.app
 - Successful CI for submission packet commit `8d94a627ff576bacb3b4e8d9e7368567ed26e03d`: https://github.com/duclucky/disclosure-dividend/actions/runs/31014180121
-- Primary contract address: `0x484f2a86CAFa7E43894d78F846ad132df8Dc6F5A`
-- Primary contract deploy transaction: https://explorer-studio.genlayer.com/tx/0x248225cd3616bd352acdacf0018cb09c7faf7240f82edb3d7b1699bc1d03fe7d
-- Primary contract address explorer: https://explorer-studio.genlayer.com/address/0x484f2a86CAFa7E43894d78F846ad132df8Dc6F5A
+- Primary contract address: `0x51eafA78c75467Fe4AF36f875c70E9A3DB458DBB`
+- Primary contract deploy transaction: https://explorer-studio.genlayer.com/tx/0xac575dfbba74b422f78ac10aab9e2ac896cb3df570ae2a2b0052c52fdd47750c
+- Primary contract address explorer: https://explorer-studio.genlayer.com/address/0x51eafA78c75467Fe4AF36f875c70E9A3DB458DBB
 - Lifecycle evidence file: `docs/evidence/studionet/deployment.json`
 - Consumer / integration contract explorer: N/A. The v1 product intentionally uses one reusable contract; a second consumer contract would only mirror state.
 
@@ -45,18 +45,26 @@ Character count: 914
 - Primary contract: `DisclosureDividend` in `contracts/disclosure_dividend.py`
 - Contract public interface: 20 methods total, 8 view methods and 12 write methods.
 - Network: GenLayer Studionet
-- Deployed contract source commit recorded in evidence: `94a4597cf37d5c8dbb002b52fd7fbcd54afed45a`
+- Deployed contract source commit recorded in evidence: `1331b8df018f3f47b7bfc08651d5b7537584d1cc`
 - Verified frontend/submission-base commit: `17b390199d86363cac709f5e8589a849c936e13e`
 - Verified submission packet commit: `8d94a627ff576bacb3b4e8d9e7368567ed26e03d`
 - Local verification command: `npm run check`
-- Local verification result: GenVM lint/schema check passed; 13 direct/static contract tests passed; 3 deployment parser tests passed; frontend TypeScript passed; 30 frontend Vitest tests passed; production frontend build completed.
+- Local verification result: GenVM lint/schema check passed; 15 direct/static contract tests passed; 3 deployment parser tests passed; frontend TypeScript passed; 32 frontend Vitest tests passed; production frontend build completed.
 - CI verification: GitHub Actions run `31014180121` completed successfully for submission packet commit `8d94a627ff576bacb3b4e8d9e7368567ed26e03d`.
-- Production frontend verification: `https://disclosure-dividend.vercel.app/` returned HTTP 200 and the deployed bundle contains the app landing/explorer copy.
+- Production frontend deployment: `https://frontend-byo9i8evq-duckys-projects-bc83c6a0.vercel.app` (`dpl_CzbKvKpkFcoB2J3DokwKKYgv4aLN`), aliased to `https://disclosure-dividend.vercel.app`.
+- Production frontend verification: `https://disclosure-dividend.vercel.app/` returned HTTP 200; the deployed bundle contains `0x51eafA78c75467Fe4AF36f875c70E9A3DB458DBB`, does not contain the superseded `0x484f...` address, and includes the lifecycle controls `Propose Disclosure`, `Request Validator Review`, and `Retry Pool`.
+
+## Response to reviewer request
+
+- `cancel_pool` is now sponsor-authorized and restricted to explicit safe recovery states: `COMMIT_OPEN` with zero claims, or `RETRYABLE` with zero revealed reports.
+- `cancel_pool` is idempotent: if the pool is already `CANCELLED`, the method returns without opening any additional credit.
+- Direct tests prove a second cancel cannot credit the same funds twice and that cancellation cannot bypass adjudication once a pool reaches `READY_FOR_REVIEW`.
+- The browser frontend now exposes the contract writes required to advance and adjudicate a pool without relying on `scripts/deploy_studionet.mjs`: `close_commit_window`, `propose_disclosure`, `verify_disclosure`, `close_reveal_window`, `adjudicate_pool`, and `retry_pool`.
 
 ## Studionet lifecycle evidence summary
 
 - Demo status: `FINALIZED_LIFECYCLE`
-- Demo pool: `node-tmp-msfnpd9s`
+- Demo pool: `node-tmp-msj5t2v5`
 - Final pool status: `DISTRIBUTED`
 - Claim outcome: `MATERIAL`
 - Claim roles: `DISCOVERY,ROOT_CAUSE,EXPLOIT_PROOF,REMEDIATION_VERIFICATION`
@@ -64,15 +72,15 @@ Character count: 914
 
 Lifecycle transactions:
 
-- Create pool: `0xfa7ef5e7b3f5c6a73a3696691310221a3cf6ca27801c0b28fe4468f7fb9c52e6`
-- Commit claim: `0x03510561dfe19f9ac067159fc8062347c94ad3193bb14e482bc0cf3f20567332`
-- Close commit window: `0xd4afaa62707d66a5e877819fa580c7cbc59cb3354a8a9f51c646e1577969c366`
-- Propose disclosure source: `0x49d5abdf24443c7ff7bdf000e09d6105bf7050c14b4d94e299a5cf876cb29405`
-- Verify disclosure source: `0xfa024b835546e1d1667ec97f24952e067f8fb007b78c34262cb67dd3affdb4c7`
-- Reveal claim: `0x3f5f6bec2e3f6c504e6781da460c5c69a4b4a4e811bbc3eb4d72317db10bb356`
-- Close reveal window: `0x829cd891d12fc7b24536d6361755c1c8701bd96e9cb4e32ae6af4093b4bb6ad7`
-- Adjudicate reward split: `0x7d7623e1f3cbd34d8fb63c8bcbd9df5427dc0171eb43a8b41bbb2fefacdff430`
-- Withdraw credit: `0x0081dbd45e0b0e2498b6296d243d7ff89ea77e05c6b5c2ea832b2ad625aeac81`
+- Create pool: `0x8b521b7903b496d63e14b2f59bd11e3bd4c5517a0bf81f154a0b3bd09f694236`
+- Commit claim: `0xeb9b99470f2a44510f5090c639c99e1cb0e9191d216eca7326171e0ed6df0f56`
+- Close commit window: `0x2f5357005896ef35d8bcc1e7e9d06cfe3b70e9910b9d02b433a213228fe89e15`
+- Propose disclosure source: `0x8a2e7a91c4a770ab3330788bf737d7ce46cb1a841955bd55b476734213830c10`
+- Verify disclosure source: `0x920f2ba3cd412c997d0e06ceaefbf1d96c0e1982a188a76c6e005e6348a12025`
+- Reveal claim: `0xb1cae3798f7c9adbcaac4d1360b30631e55d474121754a3763f6fafaab4a4bdb`
+- Close reveal window: `0xb54eb9283526b7b24d2941f3e71b9e8765b00effc564ae78e9c683af29f5a898`
+- Adjudicate reward split: `0xaf62c435b5a99c2fb95ff6d41b9099e5cf5f89bcaef5a0124d67fc5a8ca2b613`
+- Withdraw credit: `0x70919b793137aedbe7b6aa58ff9822a3e7face877c74e641129d89a71ed8bf88`
 
 ## What validators inspect
 
@@ -89,7 +97,7 @@ Other security programs, open-source foundations, package registries, and bounty
 ## Honest limitations / pending
 
 - The canonical full lifecycle evidence is script-signed on Studionet. A full production browser-wallet lifecycle through final distribution is not claimed.
-- Browser wallet integration is implemented and covered by frontend tests, including provider selection, Studionet chain switching, persisted session restore, balance display, and logout.
+- Browser wallet integration is implemented and covered by frontend tests, including provider selection, Studionet chain switching, persisted session restore, balance display, logout, source proposal/verification, window closing, adjudication, and retry.
 - No mainnet deployment, real security-program adoption, external user volume, or non-Studionet value claim is made.
 - CI has a non-blocking GitHub Actions annotation about Node.js 20 deprecation on actions; the current check run completed successfully.
 
